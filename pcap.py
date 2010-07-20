@@ -25,6 +25,7 @@ class TCPPacket(object):
         self.start_seq = self.tcp.seq
         self.end_seq = self.tcp.seq + len(self.tcp.data) - 1
         self.rtt = None
+    
     def __cmp__(self, other):
         return cmp(self.ts, other.ts)
     def __eq__(self, other):
@@ -35,7 +36,7 @@ class TCPPacket(object):
         else:
             return True
     def __repr__(self):
-        
+        return 'TCPPacket(%s, %s, %s)' % (friendly_socket(self.socket), friendly_tcp_flags(self.tcp.flags), self.tcp.data[0:60])
     def overlaps(self, other):
         return (self.start_seq <= other.start_seq and \
                 other.start_seq < self.end_seq) \
@@ -79,7 +80,9 @@ class TCPFlowAccumulator:
             self.flowdict[(dst,src)].append(pkt)
         else:
             self.flowdict[(src,dst)] = [pkt]
-    #
+    def flows(self):
+        '''lists available flows by socket'''
+        return [friendly_socket(s) for s in self.flowdict.keys()]
 
 
 
@@ -90,6 +93,16 @@ def friendly_tcp_flags(flags):
     active_flags = filter(lambda t: t[0] & flags, d.iteritems()) #iteritems (sortof) returns a list of tuples
     #join all their string representations with '|'
     return '|'.join(t[1] for t in active_flags)
+
+def friendly_socket(sock):
+    '''returns a socket where the addresses are converted by inet_ntoa. sock
+    is in tuple format, like ((sip, sport),(dip, sport))'''
+    return '((%s, %d), (%s, %d))' % (
+        inet_ntoa(sock[0][0]),
+        sock[0][1],
+        inet_ntoa(sock[1][0]),
+        sock[1][1]
+    )
 
 def viewtcp(pkts):
     '''prints tcp packets in the passed packets
