@@ -7,8 +7,9 @@ class TCPFlow:
     Includes forward data (sent) and reverse data (received), from the
     perspective of the SYN-sender.'''
     def __init__(self, packets, ):
-        '''assembles the series. packets is a list of TCPPacket's from the
-        same socket.'''
+        '''assembles the series. packets is a list of TCPPacket's from the same
+        socket.'''
+        self.packets = packets
         # grab handshake, if possible
         # discover direction, etc.
         # synthesize forward data, backwards data
