@@ -88,7 +88,9 @@ def friendly_tcp_flags(flags):
     return '|'.join(t[1] for t in active_flags)
 
 def viewtcp(pkts):
-    '''prints tcp packets in the passed packets, in pcap format'''
+    '''prints tcp packets in the passed packets
+    
+    packets should be in the format returned by dpkt.pcap.Reader.__iter__'''
     for pkt in pkts:
         eth = dpkt.ethernet.Ethernet(pkt[1])
         try:
