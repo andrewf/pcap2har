@@ -2,83 +2,39 @@ import dpkt
 #from dpkt.tcp import * # import all TH_* constants
 from socket import inet_ntoa
 
-class ModifiedReader(object):
-    """A copy of the dpkt pcap Reader. The only change is that the iterator
-    yields the pcap packet header as well, so it's possible to check the true
-    frame length, among other things.
-    """
-    
-    def __init__(self, fileobj):
-        self.name = fileobj.name
-        self.fd = fileobj.fileno()
-        self.__f = fileobj
-        buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__)
-        self.__fh = dpkt.pcap.FileHdr(buf)
-        self.__ph = dpkt.pcap.PktHdr
-        if self.__fh.magic == dpkt.pcap.PMUDPCT_MAGIC:
-            self.__fh = dpkt.pcap.LEFileHdr(buf)
-            self.__ph = dpkt.pcap.LEPktHdr
-        elif self.__fh.magic != dpkt.pcap.TCPDUMP_MAGIC:
-            raise ValueError, 'invalid tcpdump header'
-        self.snaplen = self.__fh.snaplen
-        self.dloff = dpkt.pcap.dltoff[self.__fh.linktype]
-        self.filter = ''
-
-    def fileno(self):
-        return self.fd
-    
-    def datalink(self):
-        return self.__fh.linktype
-    
-    def setfilter(self, value, optimize=1):
-        return NotImplementedError
-
-    def readpkts(self):
-        return list(self)
-    
-    def dispatch(self, cnt, callback, *args):
-        if cnt > 0:
-            for i in range(cnt):
-                ts, pkt = self.next()
-                callback(ts, pkt, *args)
+class TCPFlowAccumulator:
+    '''Takes a list of TCP packets and organizes them into distinct
+    connections, or flows. It does this by organizing packets into a
+    dictionary indexed by their socket, or the tuple
+    ((srcip, sport), (dstip,dport)), possibly the other way around.'''
+    def __init__(self, pcap_reader):
+        '''scans the pcap_reader for TCP packets, and incorporates them
+        into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
+        #iterate through pcap_reader
+            #filter out non-tcp packets
+                #organize by socket
+        for pkt in pcap_reader:
+            
+    def process_packet(self, pkt)
+        '''adds the tcp packet to flowdict. pkt is the IP part of the packet'''
+        srcip = pkt.src
+        dstip = pkt.dst
+        sport = pkt.data.sport #pkt.data is a TCP
+        dport = pkt.data.dport
+        src = (srcip, sport)
+        dst = (dstip, dport)
+        #ok, NOW add it
+        #try both orderings of src/dst socket components
+        #otherwise, start a new list for that socket
+        if (src, dst) in self.flowdict:
+            self.flowdict[(src,dst)].append(pkt)
+        elif (dst, src) in self.flowdict:
+            self.flowdict[(dst,src)].append(pkt)
         else:
-            for ts, pkt in self:
-                callback(ts, pkt, *args)
+            self.flowdict[(src,dst)] = [pkt]
+    #
 
-    def loop(self, callback, *args):
-        self.dispatch(0, callback, *args)
-    
-    def __iter__(self):
-        self.__f.seek(dpkt.pcap.FileHdr.__hdr_len__)
-        while 1:
-            buf = self.__f.read(dpkt.pcap.PktHdr.__hdr_len__)
-            if not buf: break
-            hdr = self.__ph(buf)
-            buf = self.__f.read(hdr.caplen)
-            yield (hdr.tv_sec + (hdr.tv_usec / 1000000.0), buf, hdr)
 
-def parsepacket(pkt):
-    '''extracts all known information from a packet, as returned by ModifiedReader ^^^
-    takes a tuple of (time as float, network data, pcap packet header)
-    returns a list of [time, [ip [transport header]], data]. Basically, parse as far
-    as possible, then spit out the rest of the data'''
-    eth = dpkt.ethernet.Ethernet(pkt[1])
-    #parse IP
-    if isinstance(eth.data, dpkt.ip.IP):
-        ip = eth.data
-        #parse TCP
-        if isinstance(ip.data, dpkt.tcp.TCP):
-            tcp = ip.data
-            socket = ((inet_ntoa(ip.src), tcp.sport), (inet_ntoa(ip.dst), tcp.dport))
-            return pkt[0], socket, tcp.data[:200]
-        elif isinstance(ip.data, dpkt.udp.UDP):
-            udp = ip.data
-            return pkt[0], 'UDP'
-        else:
-            return pkt[0], ip, ip.data
-    else:
-        return (pkt[0], 'Eth')
-#
 
 def friendly_tcp_flags(flags):
     '''returns a string containing a user-friendly representation of the tcp flags'''
