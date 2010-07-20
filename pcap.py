@@ -2,6 +2,47 @@ import dpkt
 #from dpkt.tcp import * # import all TH_* constants
 from socket import inet_ntoa
 
+class TCPPacket(object):
+    '''copied from pyper, with additions. represents a TCP packet. contains
+    socket, timestamp, and data'''
+    def __init__(self, ts, buf, eth, ip, tcp):
+        '''ts = timestamp
+        buf = original packet data
+        eth = dpkt.ethernet.Ethernet that the packet came from
+        ip  = dpkt.ip.IP that the packet came from
+        tcp = dpkt.tcp.TCP that the packet came from
+        '''
+        self.ts = ts
+        self.buf = buf
+        self.eth = eth
+        self.ip = ip
+        self.tcp = tcp
+        self.socket = ((self.ip.src, self.tcp.sport),(self.ip.dst, self.tcp.dport))
+        self.data = tcp.data
+        self.is_rexmit = None
+        self.is_out_of_order = None
+
+        self.start_seq = self.tcp.seq
+        self.end_seq = self.tcp.seq + len(self.tcp.data) - 1
+        self.rtt = None
+    def __cmp__(self, other):
+        return cmp(self.ts, other.ts)
+    def __eq__(self, other):
+        return not self.__ne__(other)
+    def __ne__(self, other):
+        if isinstance(other, TCPPacket):
+            return cmp(self, other) != 0
+        else:
+            return True
+    def __repr__(self):
+        
+    def overlaps(self, other):
+        return (self.start_seq <= other.start_seq and \
+                other.start_seq < self.end_seq) \
+                              or \
+               (self.start_seq < other.end_seq and \
+                other.end_seq <= self.end_seq)
+
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
     connections, or flows. It does this by organizing packets into a
@@ -10,19 +51,25 @@ class TCPFlowAccumulator:
     def __init__(self, pcap_reader):
         '''scans the pcap_reader for TCP packets, and incorporates them
         into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
+        self.flowdict = {} # {socket: [TCPPacket]}
         #iterate through pcap_reader
             #filter out non-tcp packets
                 #organize by socket
         for pkt in pcap_reader:
+            #parse packet
+            eth = dpkt.ethernet.Ethernet(pkt[1])
+            if isinstance(eth.data, dpkt.ip.IP):
+                ip = eth.data
+                if isinstance(ip.data, dpkt.tcp.TCP):
+                    #then it's a TCP packet
+                    tcp = ip.data
+                    #process it
+                    tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
+                    self.process_packet(tcppkt)
             
-    def process_packet(self, pkt)
-        '''adds the tcp packet to flowdict. pkt is the IP part of the packet'''
-        srcip = pkt.src
-        dstip = pkt.dst
-        sport = pkt.data.sport #pkt.data is a TCP
-        dport = pkt.data.dport
-        src = (srcip, sport)
-        dst = (dstip, dport)
+    def process_packet(self, pkt):
+        '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
+        src, dst = pkt.socket
         #ok, NOW add it
         #try both orderings of src/dst socket components
         #otherwise, start a new list for that socket
