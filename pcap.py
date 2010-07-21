@@ -14,8 +14,8 @@ class TCPFlowAccumulator:
             #filter out non-tcp packets
                 #organize by socket
         for pkt in pcap_reader:
-            
-    def process_packet(self, pkt)
+            pass
+    def process_packet(self, pkt):
         '''adds the tcp packet to flowdict. pkt is the IP part of the packet'''
         srcip = pkt.src
         dstip = pkt.dst
