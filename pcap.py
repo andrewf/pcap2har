@@ -1,6 +1,7 @@
 import dpkt
-#from dpkt.tcp import * # import all TH_* constants
+from pcaputil import *
 from socket import inet_ntoa
+from tcppacket import TCPPacket
 
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
@@ -10,19 +11,25 @@ class TCPFlowAccumulator:
     def __init__(self, pcap_reader):
         '''scans the pcap_reader for TCP packets, and incorporates them
         into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
+        self.flowdict = {} # {socket: [TCPPacket]}
         #iterate through pcap_reader
             #filter out non-tcp packets
                 #organize by socket
         for pkt in pcap_reader:
-            pass
+            #parse packet
+            eth = dpkt.ethernet.Ethernet(pkt[1])
+            if isinstance(eth.data, dpkt.ip.IP):
+                ip = eth.data
+                if isinstance(ip.data, dpkt.tcp.TCP):
+                    #then it's a TCP packet
+                    tcp = ip.data
+                    #process it
+                    tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
+                    self.process_packet(tcppkt)
+            
     def process_packet(self, pkt):
-        '''adds the tcp packet to flowdict. pkt is the IP part of the packet'''
-        srcip = pkt.src
-        dstip = pkt.dst
-        sport = pkt.data.sport #pkt.data is a TCP
-        dport = pkt.data.dport
-        src = (srcip, sport)
-        dst = (dstip, dport)
+        '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
+        src, dst = pkt.socket
         #ok, NOW add it
         #try both orderings of src/dst socket components
         #otherwise, start a new list for that socket
@@ -32,17 +39,10 @@ class TCPFlowAccumulator:
             self.flowdict[(dst,src)].append(pkt)
         else:
             self.flowdict[(src,dst)] = [pkt]
-    #
+    def flows(self):
+        '''lists available flows by socket'''
+        return [friendly_socket(s) for s in self.flowdict.keys()]
 
-
-
-def friendly_tcp_flags(flags):
-    '''returns a string containing a user-friendly representation of the tcp flags'''
-    d = {dpkt.tcp.TH_FIN:'FIN', dpkt.tcp.TH_SYN:'SYN', dpkt.tcp.TH_RST:'RST', dpkt.tcp.TH_PUSH:'PUSH', dpkt.tcp.TH_ACK:'ACK', dpkt.tcp.TH_URG:'URG', dpkt.tcp.TH_ECE:'ECE', dpkt.tcp.TH_CWR:'CWR'}
-    #make a list of the flags that are activated
-    active_flags = filter(lambda t: t[0] & flags, d.iteritems()) #iteritems (sortof) returns a list of tuples
-    #join all their string representations with '|'
-    return '|'.join(t[1] for t in active_flags)
 
 def viewtcp(pkts):
     '''prints tcp packets in the passed packets
