@@ -1,4 +1,5 @@
 from tcppacket import TCPPacket
+import tcpseq
 
 class TCPFlow:
     '''assembles a series of tcp packets into streams of the actual data
