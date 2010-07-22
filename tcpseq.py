@@ -42,8 +42,6 @@ class TestTcpSeqSubtraction(unittest.TestCase):
         self.assertEqual(subtract(0x10000000, 0xd0000000), 0x40000000)
         # actual: a > b. want: a < b
         self.assertEqual(subtract(0xd0000000, 0x10000000), -0x40000000)
-        print 'testing ryans case, subtraction'
-        self.assertEqual(subtract(0x100, 0xffffffff), -0x100)
         #self.assertEqual(subtract(
         #self.assertEqual(subtract(
         #self.assertEqual(subtract(
@@ -51,8 +49,7 @@ class TestTcpSeqSubtraction(unittest.TestCase):
 class TestLessThan(unittest.TestCase):
     def testLessThan(self):
         self.assertTrue( not lt(100, 10))
-        self.assertTrue( lt(0x100, 0xffffffff))
-        self.assertTrue( lt(0xf0000000, 0x7fffffff))
+        self.assertTrue( lt(0x7fffffff, 0xf0000000))
     
 def runtests():
     suite = unittest.TestSuite()
