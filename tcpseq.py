@@ -27,7 +27,16 @@ def subtract(a, b):
 
 def lt(a, b):
     return subtract(a, b) < 0
-    
+
+def gt(a, b):
+    return subtract(a, b) > 0
+
+def lte(a, b):
+    return subtract(a, b) <= 0
+
+def gte(a, b):
+    return subtract(a, b) >= 0
+
 import unittest
 
 class TestTcpSeqSubtraction(unittest.TestCase):
