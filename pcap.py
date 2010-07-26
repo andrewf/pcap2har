@@ -27,6 +27,7 @@ class TCPFlowAccumulator:
         # use TCPFlow class to stitch packets
         self.flowdict = {} # {socket: TCPFlow}
         for sock, flow in self.raw_flowdict.iteritems():
+            #print 'flowing socket: ', friendly_socket(sock), flow
             self.flowdict[sock] = TCPFlow(flow)
             
     def process_packet(self, pkt):
@@ -35,11 +36,15 @@ class TCPFlowAccumulator:
         #otherwise, start a new list for that socket
         src, dst = pkt.socket
         #ok, NOW add it
+        #print 'processing packet: ', pkt
         if (src, dst) in self.raw_flowdict:
+            #print '  adding as ', (src, dst)
             self.raw_flowdict[(src,dst)].append(pkt)
-        if (dst, src) in self.raw_flowdict:
+        elif (dst, src) in self.raw_flowdict:
+            #print '  adding as ', (dst, src)
             self.raw_flowdict[(dst, src)].append(pkt)
         else:
+            #print '  making new dict entry as ', (src, dst)
             self.raw_flowdict[(src,dst)] = [pkt]
     def flows(self):
         '''lists available flows by socket'''

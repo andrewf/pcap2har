@@ -22,7 +22,7 @@ class TCPPacket(object):
         self.is_out_of_order = None
 
         self.start_seq = self.tcp.seq
-        self.end_seq = self.tcp.seq + len(self.tcp.data) - 1
+        self.end_seq = self.tcp.seq + len(self.tcp.data) # - 1
         self.rtt = None
     
     def __cmp__(self, other):
@@ -35,7 +35,13 @@ class TCPPacket(object):
         else:
             return True
     def __repr__(self):
-        return 'TCPPacket(%s, %s, %s)' % (friendly_socket(self.socket), friendly_tcp_flags(self.tcp.flags), self.tcp.data[0:60])
+        return 'TCPPacket(%s, %s, seq=%x , ack=%x, data="%s")' % (
+            friendly_socket(self.socket),
+            friendly_tcp_flags(self.tcp.flags),
+            self.tcp.seq,
+            self.tcp.ack,
+            friendly_data(self.tcp.data)[:60]
+        )
     def overlaps(self, other):
         return (self.start_seq <= other.start_seq and \
                 other.start_seq < self.end_seq) \

@@ -1,4 +1,5 @@
 import dpkt
+from socket import inet_ntoa
 
 def friendly_tcp_flags(flags):
     '''returns a string containing a user-friendly representation of the tcp flags'''
@@ -18,3 +19,5 @@ def friendly_socket(sock):
         sock[1][1]
     )
 
+def friendly_data(str):
+    return `str`

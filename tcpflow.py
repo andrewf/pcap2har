@@ -1,6 +1,7 @@
 from tcppacket import TCPPacket
-import tcpseq
+from pcaputil import *
 from tcpseq import lt, lte, gt, gte
+import tcpseq
 
 class TCPFlowError(Exception):
     pass
@@ -18,6 +19,7 @@ class TCPFlow:
         self.packets = packets
         #reference point for determining flow direction
         self.socket = self.packets[0].socket
+        print 'making tcpflow: ', self.socket
         # grab handshake, if possible
         # discover direction, etc.
         # synthesize forward data, backwards data
@@ -46,6 +48,10 @@ class TCPFlow:
             '''
             oldseq = old[0]
             newseq = (new.start_seq, new.end_seq)
+            assert(oldseq[0] <= oldseq[1])
+            assert(newseq[0] <= newseq[1])
+            
+            print 'sequence pairs: ', oldseq, ' ', newseq
             # get the data out of the tuple so we can modify it
             new_seq_start = old[0][0]
             new_seq_end = old[0][1]
@@ -54,28 +60,44 @@ class TCPFlow:
             # see where the new data is, if any
             # hanging-off-front-edge and hanging-off-back-edge cases are designed to be independent
             # if there's new data hanging off the front edge of the old data
+            collided = False
             if lt(newseq[0], oldseq[0]) and lte(oldseq[0], newseq[1]):
                 # add on front data
+                print '  adding on front data'
                 new_data_length = tcpseq.subtract(oldseq[0], newseq[0])
                 newdata = new.data[:new_data_length] + newdata # slice out just new data, tack it on front
                 new_seq_start = newseq[0]
                 arrival_logger.add(newseq[0], new)
+                collided = True
             # if there's new data hanging off the back edge...
             if lte(newseq[0], oldseq[1]) and lt(oldseq[1], newseq[1]):
                 #add on back data
-                new_data_length = tcpseq.subtract(newseq[1], oldseq[0])
-                # wrong back_seq_start = newseq[1] - new_data_length # the first sequence number of the new data on the back end
+                print '  adding on back data'
+                new_data_length = tcpseq.subtract(newseq[1], oldseq[1])
+                back_seq_start = newseq[1] - (new_data_length - 1) # the first sequence number of the new data on the back end
                 newdata += new.data[-new_data_length:] # slice out the back of the new data
                 new_seq_end += new_data_length
                 arrival_logger.add(back_seq_start, new)
-            return ((new_seq_start, new_seq_end), newdata, arrival_logger)
+                collided = True
+            # if the new data is completely inside the old data
+            if lte(oldseq[0], newseq[0]) and lte(newseq[1], oldseq[1]):
+                collided = True # this will just cause the existing data to be returned
+            # return the merged data if there was new data, otherwise none
+            if collided:
+                return (new_seq_start, new_seq_end), newdata, arrival_logger
+            else:
+                return None
+        # log stuff
+        #print 'packets: ', packets
         # real start of merge
         stream_segments = [] # the list of data tuples, pieces of the TCP stream. Sorry for the name collision.
         for pkt in packets:
             all_new = True # whether pkt is all new data (needs a new segment, assumed true until proven false)
             for i, olddata in enumerate(stream_segments):
                 merged = merge(olddata, pkt)
+                print 'merged: ', merged
                 if merged:
+                    print '  merging'
                     stream_segments[i] = merged #replace old segment with merged one
                     all_new = False
                     break
@@ -84,12 +106,15 @@ class TCPFlow:
                 # make a new data segment
                 newlogger = TCPDataArrivalLogger()
                 newlogger.add(pkt.start_seq, pkt)
-                stream_segments.append( ((pkt.start_seq, pkt.end_seq), pkt.data, newlogger) )
+                d = ((pkt.start_seq, pkt.end_seq), pkt.data, newlogger)
+                print '  making a new data segment: ', d
+                stream_segments.append( d )
         # now all packets are accounted for
         # for now, just return the data out of the first tuple
         num_segments = len(stream_segments)
         if not num_segments:
-            raise RuntimeError('TCPFlow.assemble_stream: no data segments')
+            print('TCPFlow.assemble_stream: no data segments')
+            return [], TCPDataArrivalLogger()
         else:
             return stream_segments[0][1], stream_segments[0][2]
     
@@ -103,6 +128,12 @@ class TCPFlow:
             return False
         else:
             raise TCPFlowError('In TCPFlow.samedir, found a packet that is from the wrong socket')
+    def __repr__(self):
+        return 'TCPFlow(%s, fwd=%s, rev=%s)' % (
+            friendly_socket(self.socket),
+            friendly_data(self.forward_data)[:60],
+            friendly_data(self.reverse_data)[:60]
+        )
 
 class TCPDataArrivalLogger:
     '''
