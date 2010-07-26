@@ -1,4 +1,5 @@
-
+'''Defines functions for comparing and processing TCP sequence numbers, taking
+into account their limited number space.'''
 
 def twos_comp(x):
     return (~x)+1

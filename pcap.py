@@ -2,6 +2,7 @@ import dpkt
 from pcaputil import *
 from socket import inet_ntoa
 from tcppacket import TCPPacket
+from tcpflow import TCPFlow
 
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
@@ -11,34 +12,35 @@ class TCPFlowAccumulator:
     def __init__(self, pcap_reader):
         '''scans the pcap_reader for TCP packets, and incorporates them
         into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
-        self.flowdict = {} # {socket: [TCPPacket]}
-        #iterate through pcap_reader
-            #filter out non-tcp packets
-                #organize by socket
+        self.raw_flowdict = {} # {socket: [TCPPacket]}
         for pkt in pcap_reader:
-            #parse packet
+            # parse packet
             eth = dpkt.ethernet.Ethernet(pkt[1])
             if isinstance(eth.data, dpkt.ip.IP):
                 ip = eth.data
                 if isinstance(ip.data, dpkt.tcp.TCP):
-                    #then it's a TCP packet
+                    # then it's a TCP packet
                     tcp = ip.data
-                    #process it
+                    # process it
                     tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
-                    self.process_packet(tcppkt)
+                    self.process_packet(tcppkt) # organize by socket
+        # use TCPFlow class to stitch packets
+        self.flowdict = {} # {socket: TCPFlow}
+        for sock, flow in self.raw_flowdict.iteritems():
+            self.flowdict[sock] = TCPFlow(flow)
             
     def process_packet(self, pkt):
         '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
-        src, dst = pkt.socket
-        #ok, NOW add it
         #try both orderings of src/dst socket components
         #otherwise, start a new list for that socket
-        if (src, dst) in self.flowdict:
-            self.flowdict[(src,dst)].append(pkt)
-        elif (dst, src) in self.flowdict:
-            self.flowdict[(dst,src)].append(pkt)
+        src, dst = pkt.socket
+        #ok, NOW add it
+        if (src, dst) in self.raw_flowdict:
+            self.raw_flowdict[(src,dst)].append(pkt)
+        if (dst, src) in self.raw_flowdict:
+            self.raw_flowdict[(dst, src)].append(pkt)
         else:
-            self.flowdict[(src,dst)] = [pkt]
+            self.raw_flowdict[(src,dst)] = [pkt]
     def flows(self):
         '''lists available flows by socket'''
         return [friendly_socket(s) for s in self.flowdict.keys()]
