@@ -13,17 +13,21 @@ class TCPFlowAccumulator:
         '''scans the pcap_reader for TCP packets, and incorporates them
         into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
         self.raw_flowdict = {} # {socket: [TCPPacket]}
+        self.errors = []
         for pkt in pcap_reader:
             # parse packet
-            eth = dpkt.ethernet.Ethernet(pkt[1])
-            if isinstance(eth.data, dpkt.ip.IP):
-                ip = eth.data
-                if isinstance(ip.data, dpkt.tcp.TCP):
-                    # then it's a TCP packet
-                    tcp = ip.data
-                    # process it
-                    tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
-                    self.process_packet(tcppkt) # organize by socket
+            try:
+                eth = dpkt.ethernet.Ethernet(pkt[1])
+                if isinstance(eth.data, dpkt.ip.IP):
+                    ip = eth.data
+                    if isinstance(ip.data, dpkt.tcp.TCP):
+                        # then it's a TCP packet
+                        tcp = ip.data
+                        # process it
+                        tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
+                        self.process_packet(tcppkt) # organize by socket
+            except dpkt.Error as e:
+                self.errors.append((pkt, e))
         # use TCPFlow class to stitch packets
         self.flowdict = {} # {socket: TCPFlow}
         for sock, flow in self.raw_flowdict.iteritems():
@@ -50,25 +54,28 @@ class TCPFlowAccumulator:
         '''lists available flows by socket'''
         return [friendly_socket(s) for s in self.flowdict.keys()]
 
+def TCPFlowsFromFile(filename):
+    '''
+    helper function for getting a TCPFlowAccumulator from a pcapfilename.
+    Filename in, flows out. Intended to be used from the console.
+    '''
+    f = open(filename,'rb')
+    reader = dpkt.pcap.Reader(f)
+    return TCPFlowAccumulator(reader)
 
-def viewtcp(pkts):
-    '''prints tcp packets in the passed packets
-    
-    packets should be in the format returned by dpkt.pcap.Reader.__iter__'''
-    for pkt in pkts:
-        eth = dpkt.ethernet.Ethernet(pkt[1])
+def verify_file(filename):
+    '''attempts to construct packets from all the packets in the file, to
+    verify their validity, or dpkt's ability to interpret them. Intended to be
+    used from the console.'''
+    f = open(filename,'rb')
+    reader = dpkt.pcap.Reader(f)
+    i = 0
+    for pkt in reader:
         try:
-            if isinstance(eth.data, dpkt.ip.IP):
-                ip = eth.data
-                if isinstance(ip.data, dpkt.tcp.TCP):
-                    tcp = ip.data
-                    #now parse tcp packets
-                    socket = ((inet_ntoa(ip.src), tcp.sport), (inet_ntoa(ip.dst), tcp.dport))
-                    #print timestamp, socket, TCP
-                    print (pkt[0], socket)
-                    print '    seq =', tcp.seq
-                    print '    ack =', tcp.ack
-                    print '    flags =',friendly_tcp_flags(tcp.flags),' (', tcp.flags, ')'
-                    print '    data =',tcp.data[:200], '\''
-        except Exception as e:
-            print 'Error: ', type(e), ', ', e
+            eth = dpkt.ethernet.Ethernet(pkt[1])
+        except dpkt.UnpackError:
+            print 'error in packet #', i
+            raise
+        i += 1
+    # just let the exception fall out
+    
