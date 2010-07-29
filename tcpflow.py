@@ -52,7 +52,7 @@ class TCPFlow:
             # get the data out of the tuple so we can modify it
             new_seq_start = old[0][0]
             new_seq_end = old[0][1]
-            newdata = old[1]
+            finaldata = old[1]
             arrival_logger = old[2]
             # see where the new data is, if any
             # hanging-off-front-edge and hanging-off-back-edge cases are designed to be independent
@@ -61,7 +61,7 @@ class TCPFlow:
             if lt(newseq[0], oldseq[0]) and lte(oldseq[0], newseq[1]):
                 # add on front data
                 new_data_length = tcpseq.subtract(oldseq[0], newseq[0])
-                newdata = new.data[:new_data_length] + newdata # slice out just new data, tack it on front
+                finaldata = new.data[:new_data_length] + finaldata # slice out just new data, tack it on front
                 new_seq_start = newseq[0]
                 arrival_logger.add(newseq[0], new)
                 collided = True
@@ -70,7 +70,7 @@ class TCPFlow:
                 #add on back data
                 new_data_length = tcpseq.subtract(newseq[1], oldseq[1])
                 back_seq_start = newseq[1] - (new_data_length - 1) # the first sequence number of the new data on the back end
-                newdata += new.data[-new_data_length:] # slice out the back of the new data
+                finaldata += new.data[-new_data_length:] # slice out the back of the new data
                 new_seq_end += new_data_length
                 arrival_logger.add(back_seq_start, new)
                 collided = True
@@ -79,7 +79,7 @@ class TCPFlow:
                 collided = True # this will just cause the existing data to be returned
             # return the merged data if there was new data, otherwise none
             if collided:
-                return (new_seq_start, new_seq_end), newdata, arrival_logger
+                return (new_seq_start, new_seq_end), finaldata, arrival_logger
             else:
                 return None
         # log stuff
@@ -91,7 +91,7 @@ class TCPFlow:
             for i, olddata in enumerate(stream_segments):
                 merged = merge(olddata, pkt)
                 if merged:
-                    stream_segments[i] = merged #replace old segment with merged one
+                    stream_segments[i] = merged # replace old segment with merged one
                     all_new = False
                     break
             # now we've looked through all the existing data
@@ -102,12 +102,13 @@ class TCPFlow:
                 d = ((pkt.start_seq, pkt.end_seq), pkt.data, newlogger)
                 stream_segments.append( d )
         # now all packets are accounted for
-        # for now, just return the data out of the first tuple
+        # now, segments must be merged
         num_segments = len(stream_segments)
         if not num_segments:
             print('TCPFlow.assemble_stream: no data segments')
             return [], TCPDataArrivalLogger()
         else:
+            print 'TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks'
             return stream_segments[0][1], stream_segments[0][2]
     
     def samedir(self, pkt):
@@ -142,11 +143,23 @@ class TCPDataArrivalLogger:
     buffers are merged.
     '''
     def __init__(self):
-        '''Initializes the requisite internal data structure.'''
+        '''
+        Initializes the requisite internal data structure.
+        '''
         self.list = []
     def add(self, sequence_number, pkt):
-        '''adds a sequence-number/packet pair to the data.'''
+        '''
+        Adds a sequence-number/packet pair to the data.
+        '''
         pass
     def find_packet(self, sequence_number):
+        '''
+        Returns the packet associated with the first sequence number less than
+        or equal to the passed one.
+        '''
         raise NotImplementedError('finding packets by sequence number is not yet fully supported')
-        
+    def merge(self, other):
+        '''
+        Merges other's data with this one.
+        '''
+        pass
