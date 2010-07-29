@@ -12,7 +12,6 @@ options, args = parser.parse_args()
 reader = dpkt.pcap.Reader(open(args[0],'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
 
-
 # write out the contents of flows to files in directory 'flowdata'
 # get empty 'flowdata' directory
 outputdirname = options.dirname
@@ -22,6 +21,7 @@ if os.path.exists(outputdirname):
 #create it
 os.mkdir(outputdirname)
 
+#iterate through flows
 for i,v in enumerate(flows.flowdict.itervalues()):
     print i, ',', v
     # write forward data
