@@ -31,7 +31,6 @@ class TCPFlow:
     def assemble_stream(self, packets):
         '''does the actual stitching of the passed packets into data.
         packets = [TCPPacket]
-        arrival_logger = TCPDataArrivalLogger
         
         returns the stitched data'''
         # store tuples of format: ((seq_begin, seq_end), data_str, arrival_logger)
@@ -45,41 +44,65 @@ class TCPFlow:
             old = data tuple ((seq_begin, seq_end), data_str, arrival_logger)
             new = TCPPacket
             '''
+            # get stuff out
+            arrival_logger = old[2]
+            # create the logging callback
+            def new_seq_number_callback(seq_num):
+                arrival_logger.add(seq_num, new)
+            # do it, passing the callback so new data gets logged
+            merged = inner_merge(old, ((new.start_seq, new.end_seq), new.data), new_seq_number_callback)
+            if merged:
+                #return merged data with the arrival_logger tacked back on
+                return merged + (arrival_logger,)
+            else:
+                return None
+        
+        def inner_merge(old, new, new_seq_number_callback = None):
+            '''
+            Merges just the two data tuples, with an optional callback to be
+            called for new sequence numbers, so they can be logged or whatever.
+            
+            old = ((begin_seq, end_seq), data)
+            new = ((begin_seq, end_seq), data)
+            new_seq_number_callback = function(long) or None
+            
+            Extra data in the tuples is acceptable, but will not be returned
+            
+            Returns the merged tuple, or None they didn't collide
+            '''
+            # get data in a mutable, easier-to-work-with form
             oldseq = old[0]
-            newseq = (new.start_seq, new.end_seq)
+            newseq = new[0]
+            finaldata = old[1]
+            final_seq_start = oldseq[0]
+            final_seq_end =   oldseq[1]
             assert(oldseq[0] <= oldseq[1])
             assert(newseq[0] <= newseq[1])
-            # get the data out of the tuple so we can modify it
-            new_seq_start = old[0][0]
-            new_seq_end = old[0][1]
-            finaldata = old[1]
-            arrival_logger = old[2]
-            # see where the new data is, if any
-            # hanging-off-front-edge and hanging-off-back-edge cases are designed to be independent
-            # if there's new data hanging off the front edge of the old data
-            collided = False
+            # misc state
+            collided = False # flag for whether the data overlapped
+            # do the merge
             if lt(newseq[0], oldseq[0]) and lte(oldseq[0], newseq[1]):
                 # add on front data
                 new_data_length = tcpseq.subtract(oldseq[0], newseq[0])
-                finaldata = new.data[:new_data_length] + finaldata # slice out just new data, tack it on front
-                new_seq_start = newseq[0]
-                arrival_logger.add(newseq[0], new)
+                finaldata = new[1][:new_data_length] + finaldata # slice out just new data, tack it on front
+                final_seq_start = newseq[0]
+                if new_seq_number_callback: new_seq_number_callback(newseq[0]) # log the new data
                 collided = True
             # if there's new data hanging off the back edge...
             if lte(newseq[0], oldseq[1]) and lt(oldseq[1], newseq[1]):
                 #add on back data
                 new_data_length = tcpseq.subtract(newseq[1], oldseq[1])
                 back_seq_start = newseq[1] - (new_data_length - 1) # the first sequence number of the new data on the back end
-                finaldata += new.data[-new_data_length:] # slice out the back of the new data
-                new_seq_end += new_data_length
-                arrival_logger.add(back_seq_start, new)
+                finaldata += new[1][-new_data_length:] # slice out the back of the new data
+                final_seq_end += new_data_length
+                if new_seq_number_callback: new_seq_number_callback(back_seq_start) # log the new data
                 collided = True
             # if the new data is completely inside the old data
             if lte(oldseq[0], newseq[0]) and lte(newseq[1], oldseq[1]):
                 collided = True # this will just cause the existing data to be returned
-            # return the merged data if there was new data, otherwise none
+            # return new data, or None
             if collided:
-                return (new_seq_start, new_seq_end), finaldata, arrival_logger
+                return ((final_seq_start, final_seq_end), finaldata)
             else:
                 return None
         # log stuff
@@ -106,10 +129,30 @@ class TCPFlow:
         num_segments = len(stream_segments)
         if not num_segments:
             print('TCPFlow.assemble_stream: no data segments')
-            return [], TCPDataArrivalLogger()
-        else:
+            return '', TCPDataArrivalLogger()
+        elif num_segments == 1:
             print 'TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks'
             return stream_segments[0][1], stream_segments[0][2]
+        else: # num_segments > 1
+            #merge as many segments as possible with the first one
+            print 'need to merge chunks'
+            iterator = iter(stream_segments)
+            final = iterator.next()
+            num_merges = 0
+            try:
+                while True:
+                    next = iterator.next()
+                    #try to merge
+                    merged = inner_merge(final, next)
+                    if merged: # merged = ((begin, end), data, logger)
+                        num_merges += 1
+                        final[2].merge(next[2]) # merge the loggers
+                        final = (merged) + (final[2],) # tack on merged logger and stor it
+            except StopIteration:
+                pass
+            # log and return
+            print 'merged', num_merges, 'chunks out of', num_segments, 'chunks'
+            return final[1:] # strip out the sequence numbers
     
     def samedir(self, pkt):
         '''returns whether the packet is in the same direction as the canonic
