@@ -27,6 +27,7 @@ class TCPFlow:
         self.forward_data, self.forward_logger = self.assemble_stream(self.forward_packets)
         self.reverse_data, self.reverse_logger = self.assemble_stream(self.reverse_packets)
         # calculate statistics?
+        self.start_time = packets[0].ts
 
     def assemble_stream(self, packets):
         '''does the actual stitching of the passed packets into data.
@@ -36,10 +37,10 @@ class TCPFlow:
         # store tuples of format: ((seq_begin, seq_end), data_str, arrival_logger)
         # when a new packet's data overlaps with one, pull that out, merge
         # them, and replace it.
-        def merge(old, new):
+        def merge_packet(old, new):
             '''
-            merges the two data tuples together, if they overlap, and
-            returns the new data tuple.
+            merges the data tuple and packet together, if they overlap, and
+            returns the new data tuple
             
             old = data tuple ((seq_begin, seq_end), data_str, arrival_logger)
             new = TCPPacket
@@ -112,7 +113,7 @@ class TCPFlow:
             if not len(pkt.data): continue # skip packets with no payload
             all_new = True # whether pkt is all new data (needs a new segment, assumed true until proven false)
             for i, olddata in enumerate(stream_segments):
-                merged = merge(olddata, pkt)
+                merged = merge_packet(olddata, pkt)
                 if merged:
                     stream_segments[i] = merged # replace old segment with merged one
                     all_new = False
@@ -135,7 +136,6 @@ class TCPFlow:
             return stream_segments[0][1], stream_segments[0][2]
         else: # num_segments > 1
             #merge as many segments as possible with the first one
-            print 'need to merge chunks'
             iterator = iter(stream_segments)
             final = iterator.next()
             num_merges = 0
@@ -147,11 +147,11 @@ class TCPFlow:
                     if merged: # merged = ((begin, end), data, logger)
                         num_merges += 1
                         final[2].merge(next[2]) # merge the loggers
-                        final = (merged) + (final[2],) # tack on merged logger and stor it
+                        final = (merged) + (final[2],) # tack on merged logger and store it
             except StopIteration:
                 pass
             # log and return
-            print 'merged', num_merges, 'chunks out of', num_segments, 'chunks'
+            print 'TCPFlow.assemble_stream: merged', num_merges, 'chunks out of', num_segments, 'chunks'
             return final[1:] # strip out the sequence numbers
     
     def samedir(self, pkt):
