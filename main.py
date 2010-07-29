@@ -1,14 +1,21 @@
 #!/usr/bin/python
 
-import dpkt, pcap, os, shutil
+import dpkt, pcap, os, shutil, optparse
 from pcaputil import *
 
-reader = dpkt.pcap.Reader(open('fhs_ncomp.pcap','rb'))
+#get cmdline args/options
+parser = optparse.OptionParser()
+parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
+options, args = parser.parse_args()
+
+#read pcap file
+reader = dpkt.pcap.Reader(open(args[0],'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
+
 
 # write out the contents of flows to files in directory 'flowdata'
 # get empty 'flowdata' directory
-outputdirname = 'flowdata'
+outputdirname = options.dirname
 if os.path.exists(outputdirname):
     # delete it
     shutil.rmtree(outputdirname)
