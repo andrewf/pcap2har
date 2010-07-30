@@ -1,16 +1,21 @@
 #!/usr/bin/python
 
-import dpkt, pcap, os, shutil, optparse
+import dpkt, pcap, os, shutil, optparse, pyper
 from pcaputil import *
 
-#get cmdline args/options
+# get cmdline args/options
 parser = optparse.OptionParser()
 parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
 options, args = parser.parse_args()
 
-#read pcap file
+# read pcap file
 reader = dpkt.pcap.Reader(open(args[0],'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
+
+# read using pyper.WaterfallAnalysis
+pcapfile = open(args[0], 'rb')
+waterfall = pyper.WaterfallAnalysis(pcapfile)
+
 
 # write out the contents of flows to files in directory 'flowdata'
 # get empty 'flowdata' directory
@@ -18,10 +23,10 @@ outputdirname = options.dirname
 if os.path.exists(outputdirname):
     # delete it
     shutil.rmtree(outputdirname)
-#create it
+# create it
 os.mkdir(outputdirname)
 
-#iterate through flows
+# iterate through flows
 for i,v in enumerate(flows.flowdict.itervalues()):
     print i, ',', v
     # write forward data
