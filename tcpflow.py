@@ -107,7 +107,7 @@ class TCPFlow:
             else:
                 return None
         # log stuff
-        # real start of merge
+        # real start of assemble_stream
         stream_segments = [] # the list of data tuples, pieces of the TCP stream. Sorry for the name collision.
         for pkt in packets:
             if not len(pkt.data): continue # skip packets with no payload
@@ -132,7 +132,7 @@ class TCPFlow:
             print('TCPFlow.assemble_stream: no data segments')
             return '', TCPDataArrivalLogger()
         elif num_segments == 1:
-            print 'TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks'
+            # print 'TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks'
             return stream_segments[0][1], stream_segments[0][2]
         else: # num_segments > 1
             #merge as many segments as possible with the first one

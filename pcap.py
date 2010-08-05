@@ -14,8 +14,10 @@ class TCPFlowAccumulator:
         into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
         self.raw_flowdict = {} # {socket: [TCPPacket]}
         self.errors = []
+        debug_pkt_count = 0
         for pkt in pcap_reader:
             # parse packet
+            debug_pkt_count += 1
             try:
                 eth = dpkt.ethernet.Ethernet(pkt[1])
                 if isinstance(eth.data, dpkt.ip.IP):
