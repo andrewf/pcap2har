@@ -2,6 +2,10 @@ from tcppacket import TCPPacket
 from pcaputil import *
 from tcpseq import lt, lte, gt, gte
 import tcpseq
+import logging
+
+log = logging.getLogger('tcpflow')
+log.setLevel(logging.ERROR)
 
 class TCPFlowError(Exception):
     pass
@@ -129,10 +133,10 @@ class TCPFlow:
         # now, segments must be merged
         num_segments = len(stream_segments)
         if not num_segments:
-            print('TCPFlow.assemble_stream: no data segments')
+            log.info('TCPFlow.assemble_stream: no data segments')
             return '', TCPDataArrivalLogger()
         elif num_segments == 1:
-            # print 'TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks'
+            # log.debug('TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks')
             return stream_segments[0][1], stream_segments[0][2]
         else: # num_segments > 1
             #merge as many segments as possible with the first one
@@ -151,7 +155,7 @@ class TCPFlow:
             except StopIteration:
                 pass
             # log and return
-            print 'TCPFlow.assemble_stream: merged', num_merges, 'chunks out of', num_segments, 'chunks'
+            log.info('TCPFlow.assemble_stream: merged %d chunks out of %d chunks' % (num_merges, num_segments))
             return final[1:] # strip out the sequence numbers
     
     def samedir(self, pkt):

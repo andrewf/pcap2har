@@ -13,7 +13,6 @@ import logging
 import urllib
 from re import compile as re
 from itertools import chain
-#from BeautifulSoup import TidyBeautifulSoup, HTMLParseError, BeautifulSoup
 import xml.sax
 import xml.sax.handler
 from socket import *
@@ -21,9 +20,8 @@ from pprint import pformat
 from struct import unpack
 from traceback import format_exc
 import traceback
-#from browsercap import BrowserCapabilities
 import tempfile
-#bc = BrowserCapabilities()
+from pcaputil import *
 
 VERSION = 12
 
@@ -241,11 +239,11 @@ class Flow(object):
 class TCPFlow(Flow):
 
     def __repr__(self):
-        return '%s <%s, start=%s, rtt=%s>' % (
+        return '%s <%s, fwd=%s, rev=%s>' % (
             self.__class__.__name__,
             flow_str(self.socket),
-            self.start,
-            str(self.rtt_min)
+            friendly_data(self.forward_data)[:60],
+            friendly_data(self.reverse_data)[:60]
         )
     def analyze(self):
 

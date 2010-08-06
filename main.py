@@ -8,14 +8,11 @@ parser = optparse.OptionParser()
 parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
 options, args = parser.parse_args()
 
+filename = '../pcaps/2010/07/07/fedex.pcap'
+
 # read pcap file
-reader = dpkt.pcap.Reader(open(args[0],'rb'))
+reader = dpkt.pcap.Reader(open(filename,'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
-
-# read using pyper.WaterfallAnalysis
-pcapfile = open(args[0], 'rb')
-waterfall = pyper.WaterfallAnalysis(pcapfile)
-
 
 # write out the contents of flows to files in directory 'flowdata'
 # get empty 'flowdata' directory

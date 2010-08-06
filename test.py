@@ -12,16 +12,16 @@ from pcaputil import *
 class InconsistentAnalyses(Exception):
     '''
     raised when the analyses of the same file are inconsistent.
-    pass filename, socket, and bool for whether data was forward'''
+    pass filename, socket, and bool for whether data was forward
+    '''
     pass
 
 def writeout_bad_data(one, two, filename):
     '''
-    writes the two data streams to a pair of files, named after the given base
-    name. used for writing out two inconsistent streams to see where there
-    errors are.
+    writes the two data streams (strings) to a pair of files, named after the
+    given base name. used for writing out two inconsistent streams to see where
+    their errors are.
     '''
-    # write first stream
     with open(filename + "-one.dat", 'wb') as f:
         f.write(one)
     with open(filename + "-two.dat", 'wb') as f:
@@ -32,6 +32,8 @@ def compare_progs(filename):
     '''
     Takes a filename and runs it through both pcap parsers, and compares the
     contents of the flows, after they're sorted by socket.
+    
+    return a list of tuples of inconsistent flow objects.
     '''
     print 'comparing file', filename
     # read with pcap2har
@@ -44,23 +46,27 @@ def compare_progs(filename):
     if len(waterfall.tcp_flows) != len(flows.flowdict):
         print 'analyses of file \"%s\" do not have the same number of flows' % filename
     # iter through waterfall.tcpflows, and compare flows with flows.flowdict[current.socket]
+    inconsistent_flows = [] # [(pyper.TCPFlow, tcpflow.TCPFlow)]
     for flow in waterfall.tcp_flows:
         socket = flow.socket
         # see if there is a corresponding flow in flows.flowdict
         if socket in flows.flowdict:
+            inconsistent = False
             flow2 = flows.flowdict[socket] # the flow from pcap2har
             # compare flow.forward_data and flow2.forward_data
             if flow.forward_data != flow2.forward_data:
-                print 'discrepancy found in forward data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
-                writeout_bad_data(flow.forward_data, flow2.forward_data, 'baddata-fwd')
-                writeout_bad_data(flow.reverse_data, flow2.reverse_data, 'baddata-rev')
-                raise InconsistentAnalyses(filename, socket, True)
+                #print 'discrepancy found in forward data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
+                inconsistent = True
             # compare flow.reverse_data and flow2.reverse_data
             if flow.reverse_data != flow.forward_data:
-                print 'discrepancy found in reverse data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
-                writeout_bad_data(flow.forward_data, flow2.forward_data, 'baddata-fwd')
-                writeout_bad_data(flow.reverse_data, flow2.reverse_data, 'baddata-rev')
-                raise InconsistentAnalyses(filename, socket, False)
+                #print 'discrepancy found in reverse data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
+                inconsistent = True
+            if inconsistent:
+                inconsistent_flows.append((flow, flow2))
+        else: # the flow in waterfall was not found in pcap2har analysis
+            print '  flow %s in waterfall was not found by pcap2har' % friendly_socket(socket)
+    return inconsistent_flows
+            
                 
     
 
@@ -80,10 +86,14 @@ def compare_progs(filename):
 def main():
     '''
     walks through the directory from the command-line, and calls compare on
-    pcap files found
+    pcap files found.
+    
+    If there are errors found in a file, print out the inconsistent sockets.
     '''
     # startdir = args[0] or '.'
-    startdir = sys.argv[1] if len(sys.argv) > 1 else '.'
+    startdir = '../pcaps' # sys.argv[1] if len(sys.argv) > 1 else '.'
+    bad_filenames = []
+    good_filenames = []
     for d in os.walk(startdir):
         for f in d[2]: # iterate through files in the directory
             # check if filename is valid pcap (ends with .cap or .pcap)
@@ -92,12 +102,22 @@ def main():
             # parse it by full name relative to working dir
             fullname = os.path.join(d[0], f)
             try:
-                compare_progs(fullname)
+                inconsistent_flows = compare_progs(fullname)
+                if len(inconsistent_flows): # if there are bad flows
+                    bad_filenames.append(fullname)
+                else:
+                    good_filenames.append(fullname)
             except InconsistentAnalyses as e:
                 # exit
                 print 'exiting program after parsing', fullname
-                sys.exit()
-    
+            except :
+                print 'filename', fullname, 'caused an exception'
+    if len(good_filenames):
+        print 'matching filenames'
+        for n in good_filenames:
+            print n
+    else:
+        print 'no files matched'
 
 if __name__ == '__main__':
     main()
