@@ -21,3 +21,61 @@ def friendly_socket(sock):
 
 def friendly_data(str):
     return `str`
+
+class ModifiedReader(object):
+    """
+    A copy of the dpkt pcap Reader. The only change is that the iterator
+    yields the pcap packet header as well, so it's possible to check the true
+    frame length, among other things.
+    
+    stolen from pyper.
+    """
+    
+    def __init__(self, fileobj):
+        self.name = fileobj.name
+        self.fd = fileobj.fileno()
+        self.__f = fileobj
+        buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__)
+        self.__fh = dpkt.pcap.FileHdr(buf)
+        self.__ph = dpkt.pcap.PktHdr
+        if self.__fh.magic == dpkt.pcap.PMUDPCT_MAGIC:
+            self.__fh = dpkt.pcap.LEFileHdr(buf)
+            self.__ph = dpkt.pcap.LEPktHdr
+        elif self.__fh.magic != dpkt.pcap.TCPDUMP_MAGIC:
+            raise ValueError, 'invalid tcpdump header'
+        self.snaplen = self.__fh.snaplen
+        self.dloff = dpkt.pcap.dltoff[self.__fh.linktype]
+        self.filter = ''
+
+    def fileno(self):
+        return self.fd
+    
+    def datalink(self):
+        return self.__fh.linktype
+    
+    def setfilter(self, value, optimize=1):
+        return NotImplementedError
+
+    def readpkts(self):
+        return list(self)
+    
+    def dispatch(self, cnt, callback, *args):
+        if cnt > 0:
+            for i in range(cnt):
+                ts, pkt = self.next()
+                callback(ts, pkt, *args)
+        else:
+            for ts, pkt in self:
+                callback(ts, pkt, *args)
+
+    def loop(self, callback, *args):
+        self.dispatch(0, callback, *args)
+    
+    def __iter__(self):
+        self.__f.seek(dpkt.pcap.FileHdr.__hdr_len__)
+        while 1:
+            buf = self.__f.read(dpkt.pcap.PktHdr.__hdr_len__)
+            if not buf: break
+            hdr = self.__ph(buf)
+            buf = self.__f.read(hdr.caplen)
+            yield (hdr.tv_sec + (hdr.tv_usec / 1000000.0), buf, hdr)
