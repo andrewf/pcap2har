@@ -18,8 +18,9 @@ class TCPPacket(object):
         self.tcp = tcp
         self.socket = ((self.ip.src, self.tcp.sport),(self.ip.dst, self.tcp.dport))
         self.data = tcp.data
-        self.is_rexmit = None
-        self.is_out_of_order = None
+        self.seq = tcp.seq
+        self.ack = tcp.ack
+        self.flags = tcp.flags
 
         self.start_seq = self.tcp.seq
         self.end_seq = self.tcp.seq + len(self.tcp.data) # - 1

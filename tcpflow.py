@@ -21,11 +21,14 @@ class TCPFlow:
         self.packets = packets
         #reference point for determining flow direction
         self.socket = self.packets[0].socket
-        # grab handshake, if possible
         # discover direction, etc.
-        # synthesize forward data, backwards data
+        # grab handshake, if possible
+        if not self.detect_handshake(packets[:3]):
+            log.warning('TCP socket %s appears not to have a handshake' % friendly_socket(self.socket))
+        # sort packets 
         self.forward_packets = [pkt for pkt in self.packets if self.samedir(pkt)]
         self.reverse_packets = [pkt for pkt in self.packets if not self.samedir(pkt)]
+        # assemble data
         self.forward_data, self.forward_logger = self.assemble_stream(self.forward_packets)
         self.reverse_data, self.reverse_logger = self.assemble_stream(self.reverse_packets)
         # calculate statistics?
@@ -181,6 +184,31 @@ class TCPFlow:
         with open(basename + '-rev.dat', 'wb') as f:
             f.write(self.reverse_data)
     
+    def detect_handshake(self, packets):
+        '''
+        Checks whether the passed list of TCPPacket's represents a valid TCP
+        handshake. Returns True or False.
+        '''
+        if len(packets) < 3:
+            return False
+        if len(packets) > 3:
+            log.error('too many packets for detect_handshake')
+            return False
+        syn, synack, ack = packets
+        fwd_seq = None
+        rev_seq = None
+        if syn.tcp.flags & TH_SYN and not syn.tcp.flags & TH_ACK:
+            # have syn
+            fwd_seq = syn.seq # start_seq is the seq field of the segment
+            if synack.flags & TH_SYN and synack.flags & TH_ACK and synack.ack == fwd_seq + 1:
+                # have synack
+                rev_seq = synack.seq
+                if ack.flags & TH_ACK and ack.ack == rev_seq + 1 and ack.seq == fwd_seq + 1:
+                    # have ack
+                    return True
+        return False
+                        
+            
 class TCPDataArrivalLogger:
     '''
     Keeps track of when TCP data first arrives. does this by storing a
