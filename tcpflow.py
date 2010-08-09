@@ -2,10 +2,8 @@ from tcppacket import TCPPacket
 from pcaputil import *
 from tcpseq import lt, lte, gt, gte
 import tcpseq
-import logging
-
-log = logging.getLogger('tcpflow')
-log.setLevel(logging.ERROR)
+import logging as log
+from dpkt.tcp import * # get all the flag constances
 
 class TCPFlowError(Exception):
     pass
@@ -174,7 +172,15 @@ class TCPFlow:
             friendly_data(self.forward_data)[:60],
             friendly_data(self.reverse_data)[:60]
         )
-
+    
+    def writeout_data(self, basename):
+        '''writes out the forward and reverse data of the flow into files named
+        basename-fwd.dat and basename-rev.dat, for debugging purposes'''
+        with open(basename + '-fwd.dat', 'wb') as f:
+            f.write(self.forward_data)
+        with open(basename + '-rev.dat', 'wb') as f:
+            f.write(self.reverse_data)
+    
 class TCPDataArrivalLogger:
     '''
     Keeps track of when TCP data first arrives. does this by storing a
