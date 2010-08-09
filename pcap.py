@@ -3,6 +3,7 @@ from pcaputil import *
 from socket import inet_ntoa
 from tcppacket import TCPPacket
 from tcpflow import TCPFlow
+import logging as log
 
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
@@ -10,15 +11,26 @@ class TCPFlowAccumulator:
     dictionary indexed by their socket, or the tuple
     ((srcip, sport), (dstip,dport)), possibly the other way around.'''
     def __init__(self, pcap_reader):
-        '''scans the pcap_reader for TCP packets, and incorporates them
-        into its dictionary. pcap_reader is expected to be a dpkt.pcap.Reader'''
+        '''
+        scans the pcap_reader for TCP packets, and incorporates them
+        into its dictionary. pcap_reader is expected to be a
+        pcaputil.ModifiedReader
+        '''
         self.raw_flowdict = {} # {socket: [TCPPacket]}
         self.errors = []
         debug_pkt_count = 0
         try:
             for pkt in pcap_reader:
-                # parse packet
                 debug_pkt_count += 1
+                # discard incomplete packets
+                header = pkt[2]
+                if debug_pkt_count == 936:
+                    pass
+                if header.caplen != header.len:
+                    # packet is too short
+                    log.warning('discarding incomplete packet')
+                    self.errors.append((pkt, 'packet is too short', debug_pkt_count))
+                # parse packet
                 try:
                     eth = dpkt.ethernet.Ethernet(pkt[1])
                     if isinstance(eth.data, dpkt.ip.IP):
@@ -30,9 +42,10 @@ class TCPFlowAccumulator:
                             tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
                             self.process_packet(tcppkt) # organize by socket
                 except dpkt.Error as e:
-                    self.errors.append((pkt, e))
+                    self.errors.append((pkt, e, debug_pkt_count))
         except dpkt.dpkt.NeedData as e:
-            print 'A packet in the pcap file was too short'
+            log.warning('A packet in the pcap file was too short, debug_pkt_count=%d' % debug_pkt_count)
+            self.errors.append((None, e))
         # use TCPFlow class to stitch packets
         self.flowdict = {} # {socket: TCPFlow}
         for sock, flow in self.raw_flowdict.iteritems():

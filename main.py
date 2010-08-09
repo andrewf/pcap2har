@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import dpkt, pcap, os, shutil, optparse, pyper
+import dpkt, pcap, os, shutil, optparse, pyper, logging
 from pcaputil import *
 
 # get cmdline args/options
@@ -8,10 +8,13 @@ parser = optparse.OptionParser()
 parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
 options, args = parser.parse_args()
 
-filename = '../pcaps/2010/07/07/fedex.pcap'
+# setup logs
+logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
+
+filename = args[0]
 
 # read pcap file
-reader = dpkt.pcap.Reader(open(filename,'rb'))
+reader = ModifiedReader(open(filename,'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
 
 # write out the contents of flows to files in directory 'flowdata'
@@ -23,14 +26,13 @@ if os.path.exists(outputdirname):
 # create it
 os.mkdir(outputdirname)
 
+#iterate through errors
+for e in flows.errors:
+    print 'error:', e
+
 # iterate through flows
 for i,v in enumerate(flows.flowdict.itervalues()):
     print i, ',', v
-    # write forward data
-    filename = os.path.join(outputdirname, 'flow%d-fwd.txt' % i)
-    with open(filename, 'wb') as f:
-        f.write(v.forward_data)
-    # write reverse data
-    filename = os.path.join(outputdirname, 'flow%d-rev.txt' % i)
-    with open(filename, 'wb') as f:
-        f.write(v.reverse_data)
+    # write data
+    v.writeout_data(outputdirname + '/flow%d' % i)
+    
