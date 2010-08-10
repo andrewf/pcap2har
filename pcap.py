@@ -81,23 +81,33 @@ class TCPFlowAccumulator:
         socket = pick flow according to socket
         fwd = string, beginning of fwd data
         rev = string, beginning of reverse data
+        sport = src port
+        dport = dest port
         '''
-        sock = kwargs['socket'] if 'socket' in kwargs else none
-        fwd = kwargs['fwd'] if 'fwd' in kwargs else None
-        rev = kwargs['rev'] if 'rev' in kwargs else None
-        for k, v in self.flowdict.iteritems():
-            candidate = True # if this is the one to return
-            if sock and k != sock:
-                candidate = False
-            if fwd and not v.forward_data.startswith(fwd):
-                candidate = False
-            if rev and not v.reverse_data.startswith(rev):
-                candidate = False
-            if candidate: # if its still a 
-                return v
-        # if nothing matched, return None
-        return None
-        
+        # a map of keywords to predicates
+        # predicates take flow and value, and return whether the flow matches
+        # the criterion
+        predicates = {
+            'socket': (lambda f, v: f.socket == v),
+            'fwd': (lambda f, v: f.fwd.data.startswith(v)),
+            'rev': (lambda f, v: f.rev.data.startswith(v)),
+            'sport': (lambda f, v: f.socket[0][1] == v),
+            'dport': (lambda f, v: f.socket[1][1] == v)
+        }
+        # look at each flow
+        for flow in self.flowdict.itervalues():
+            candidate = True
+            # iter through kwargs, match with preds
+            for k, v in kwargs.iteritems():
+                # if the requested attribute is in our dict
+                if k in predicates:
+                    # if the predicate is false, rule out the flow
+                    if not predicates[k](flow, kwargs[k]):
+                        candidate = False
+                        break
+            # if all the predicates passed...
+            if candidate:
+                return flow
 
 def TCPFlowsFromFile(filename):
     '''
@@ -105,7 +115,7 @@ def TCPFlowsFromFile(filename):
     Filename in, flows out. Intended to be used from the console.
     '''
     f = open(filename,'rb')
-    reader = dpkt.pcap.Reader(f)
+    reader = ModifiedReader(f)
     return TCPFlowAccumulator(reader)
 
 def verify_file(filename):
