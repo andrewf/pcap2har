@@ -43,7 +43,7 @@ class TCPFlow:
         # search through several positions in the packet stream
         self.handshake = None
         for n in range(0, 10): # we'll only check the first ten positions
-            if (len(packets) > n+3 and self.detect_handshake(packets[n:n+3])): # bail out early if the packets are too few
+            if (len(packets) > n+3 and detect_handshake(packets[n:n+3])): # bail out early if the packets are too few
                 self.handshake = n # the index at which the handshake starts
         if not self.handshake:
             log.warning('flow %s appears not to have a handshake' % friendly_socket(self.socket))
@@ -58,7 +58,7 @@ class TCPFlow:
         self.rev = TCPDirection(self.reverse_packets)
         # calculate statistics?
         self.start_time = packets[0].ts
-    
+
     def samedir(self, pkt):
         '''returns whether the packet is in the same direction as the canonic
         direction of the flow.'''
@@ -75,7 +75,7 @@ class TCPFlow:
             friendly_data(self.fwd.data)[:60],
             friendly_data(self.rev.data)[:60]
         )
-    
+
     def writeout_data(self, basename):
         '''writes out the forward and reverse data of the flow into files named
         basename-fwd.dat and basename-rev.dat, for debugging purposes'''
@@ -89,12 +89,12 @@ class TCPDataArrivalLogger:
     Keeps track of when TCP data first arrives. does this by storing a
     list/set/whatever of tuples (sequence_number, packet), where sequence_number
     is the first sequence number of the *new* data in packet.
-    
+
     This information, along with the beginning and end sequence numbers of the
     data, allows you to find the packet in which a given sequence number of
     data first arrived, by finding the first number less than the given
     sequence number and then grabbing the associated packet.
-    
+
     This class must be created on a per-buffer basis, and merged whenever the
     buffers are merged.
     '''
@@ -123,7 +123,7 @@ class TCPDataArrivalLogger:
 def assemble_stream(packets):
     '''does the actual stitching of the passed packets into data.
     packets = [TCPPacket]
-    
+
     returns the stitched data'''
     # store tuples of format: ((seq_begin, seq_end), data_str, arrival_logger)
     # when a new packet's data overlaps with one, pull that out, merge
@@ -132,7 +132,7 @@ def assemble_stream(packets):
         '''
         merges the data tuple and packet together, if they overlap, and
         returns the new data tuple
-        
+
         old = data tuple ((seq_begin, seq_end), data_str, arrival_logger)
         new = TCPPacket
         '''
@@ -148,18 +148,18 @@ def assemble_stream(packets):
             return merged + (arrival_logger,)
         else:
             return None
-    
+
     def inner_merge(old, new, new_seq_number_callback = None):
         '''
         Merges just the two data tuples, with an optional callback to be
         called for new sequence numbers, so they can be logged or whatever.
-        
+
         old = ((begin_seq, end_seq), data)
         new = ((begin_seq, end_seq), data)
         new_seq_number_callback = function(long) or None
-        
+
         Extra data in the tuples is acceptable, but will not be returned
-        
+
         Returns the merged tuple, or None they didn't collide
         '''
         # get data in a mutable, easier-to-work-with form
@@ -277,4 +277,3 @@ def detect_closing_handshake(packets):
     the sender of this side of the connection.
     '''
     pass
-    
