@@ -4,6 +4,7 @@ from tcpseq import lt, lte, gt, gte
 import tcpseq
 import logging as log
 from dpkt.tcp import * # get all the flag constances
+from orderedset import OrderedSet
 
 class TCPFlowError(Exception):
     pass
@@ -43,11 +44,13 @@ class TCPFlow:
         # search through several positions in the packet stream
         self.handshake = None
         for n in range(0, 10): # we'll only check the first ten positions
-            if (len(packets) > n+3 and self.detect_handshake(packets[n:n+3])): # bail out early if the packets are too few
+            if (len(packets) > n+3 and detect_handshake(packets[n:n+3])): # bail out early if the packets are too few
                 self.handshake = n # the index at which the handshake starts
         if not self.handshake:
             log.warning('flow %s appears not to have a handshake' % friendly_socket(self.socket))
         # sort packets, disregarding pre-handshake ones
+        self.forward_packets = []
+        self.reverse_packets = []
         for pkt in self.packets[ (self.handshake or 0) :]:
             if self.samedir(pkt):
                 self.forward_packets.append(pkt)
@@ -102,12 +105,12 @@ class TCPDataArrivalLogger:
         '''
         Initializes the requisite internal data structure.
         '''
-        self.list = []
+        self.items = OrderedSet()
     def add(self, sequence_number, pkt):
         '''
         Adds a sequence-number/packet pair to the data.
         '''
-        pass
+        self.items.insert((sequence_number, pkt))
     def find_packet(self, sequence_number):
         '''
         Returns the packet associated with the first sequence number less than

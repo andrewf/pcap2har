@@ -1,123 +1,40 @@
 #!/usr/bin/python
 
 '''
-Runs through the directory passed on the command line, looks for pcap files
-recursively, and compares the outputs of the tcp flows to see how well each
-program did.
+Try parsing HTTP from the TCPFlow data in the files indicated on the command
+line.
 '''
 
-import dpkt, pcap, os, shutil, optparse, pyper, sys
-from pcaputil import *
+import http, sys, dpkt
 
-class InconsistentAnalyses(Exception):
-    '''
-    raised when the analyses of the same file are inconsistent.
-    pass filename, socket, and bool for whether data was forward
-    '''
-    pass
+inputbasename = sys.argv[1]
 
-def writeout_bad_data(one, two, filename):
-    '''
-    writes the two data streams (strings) to a pair of files, named after the
-    given base name. used for writing out two inconsistent streams to see where
-    their errors are.
-    '''
-    with open(filename + "-one.dat", 'wb') as f:
-        f.write(one)
-    with open(filename + "-two.dat", 'wb') as f:
-        f.write(two)
-    
+forwarddata = None
+reversedata = None
 
-def compare_progs(filename):
-    '''
-    Takes a filename and runs it through both pcap parsers, and compares the
-    contents of the flows, after they're sorted by socket.
-    
-    return a list of tuples of inconsistent flow objects.
-    '''
-    print 'comparing file', filename
-    # read with pcap2har
-    reader = dpkt.pcap.Reader(open(filename,'rb'))
-    flows = pcap.TCPFlowAccumulator(reader) # flows are in flows.flowdict
-    # read with WaterfallAnalysis
-    pcapfile = open(filename, 'rb')
-    waterfall = pyper.WaterfallAnalysis(pcapfile) #flows are in waterfall.tcp_flows :: [pyper.TCPFlow]
-    # see if the numbers of flows are the same, otherwise log it
-    if len(waterfall.tcp_flows) != len(flows.flowdict):
-        print 'analyses of file \"%s\" do not have the same number of flows' % filename
-    # iter through waterfall.tcpflows, and compare flows with flows.flowdict[current.socket]
-    inconsistent_flows = [] # [(pyper.TCPFlow, tcpflow.TCPFlow)]
-    for flow in waterfall.tcp_flows:
-        socket = flow.socket
-        # see if there is a corresponding flow in flows.flowdict
-        if socket in flows.flowdict:
-            inconsistent = False
-            flow2 = flows.flowdict[socket] # the flow from pcap2har
-            # compare flow.forward_data and flow2.forward_data
-            if flow.forward_data != flow2.forward_data:
-                #print 'discrepancy found in forward data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
-                inconsistent = True
-            # compare flow.reverse_data and flow2.reverse_data
-            if flow.reverse_data != flow.forward_data:
-                #print 'discrepancy found in reverse data for file \"%s\", socket %s' % (filename, friendly_socket(socket))
-                inconsistent = True
-            if inconsistent:
-                inconsistent_flows.append((flow, flow2))
-        else: # the flow in waterfall was not found in pcap2har analysis
-            print '  flow %s in waterfall was not found by pcap2har' % friendly_socket(socket)
-    return inconsistent_flows
-            
-                
-    
+with open(inputbasename + '-fwd.dat','rb') as f:
+    forwarddata = f.read()
+with open(inputbasename + '-rev.dat','rb') as f:
+    reversedata = f.read()
 
-# get cmdline args/options
-#~ parser = optparse.OptionParser()
-#~ parser.add_option('-d', '--directory', dest="dirname", help="Directory to write flow files to.")
-#~ options, args = parser.parse_args()
+requests_are_forward = True
 
-# get empty 'flowdata' directory
-#~ outputdirname = options.dirname
-#~ if os.path.exists(outputdirname):
-    #~ # delete it
-    #~ shutil.rmtree(outputdirname)
-#~ # create it
-#~ os.mkdir(outputdirname)
 
-def main():
-    '''
-    walks through the directory from the command-line, and calls compare on
-    pcap files found.
-    
-    If there are errors found in a file, print out the inconsistent sockets.
-    '''
-    # startdir = args[0] or '.'
-    startdir = '../pcaps' # sys.argv[1] if len(sys.argv) > 1 else '.'
-    bad_filenames = []
-    good_filenames = []
-    for d in os.walk(startdir):
-        for f in d[2]: # iterate through files in the directory
-            # check if filename is valid pcap (ends with .cap or .pcap)
-            if not (f.endswith('.pcap') or f.endswith('.cap')):
-                continue
-            # parse it by full name relative to working dir
-            fullname = os.path.join(d[0], f)
-            try:
-                inconsistent_flows = compare_progs(fullname)
-                if len(inconsistent_flows): # if there are bad flows
-                    bad_filenames.append(fullname)
-                else:
-                    good_filenames.append(fullname)
-            except InconsistentAnalyses as e:
-                # exit
-                print 'exiting program after parsing', fullname
-            except :
-                print 'filename', fullname, 'caused an exception'
-    if len(good_filenames):
-        print 'matching filenames'
-        for n in good_filenames:
-            print n
-    else:
-        print 'no files matched'
+# try parsing with forward as request direction
+success, requests, responses = parse_streams(forwarddata, reversedata)
+if not success:
+    # try parsing with reverse as request dir
+    print 'parsing with reverse data as requests'
+    success, requests, responses = parse_streams(reversedata, forwarddata)
+    if not success:
+        # well, crap
+        print 'flow is not http, aborting'
+        sys.exit()
 
-if __name__ == '__main__':
-    main()
+# okay, hopefully everything is parsed now
+if not len(requests) == len(responses):
+    print 'different numbers of requests and responses'
+
+pairs = zip(requests, responses)
+
+# print it all out
