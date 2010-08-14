@@ -1,38 +1,62 @@
 #!/usr/bin/python
 
-import dpkt, pcap, os, shutil, optparse, pyper, logging
+import pcap
+import os
+import optparse
+import logging
+import sys
+import http
 from pcaputil import *
 
 # get cmdline args/options
-parser = optparse.OptionParser()
-parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
+parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
+#parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
 options, args = parser.parse_args()
 
 # setup logs
 logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
 
-filename = args[0]
+# get filenames, or bail out with usage error
+if len(args) == 2:
+    inputfile, outputfile = args[0:2]
+else:
+    parser.print_help()
+    sys.exit()
 
 # read pcap file
-reader = ModifiedReader(open(filename,'rb'))
+reader = ModifiedReader(open(inputfile,'rb'))
 flows = pcap.TCPFlowAccumulator(reader)
 
-# write out the contents of flows to files in directory 'flowdata'
-# get empty 'flowdata' directory
-outputdirname = options.dirname
-if os.path.exists(outputdirname):
-    # delete it
-    shutil.rmtree(outputdirname)
-# create it
-os.mkdir(outputdirname)
+def try_call(function):
+    '''
+    returns a function that tries to call the passed function, but returns None
+    if the function raises and exception.
+    '''
+    def wrapped(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception:
+            return None
+    return wrapped
 
-#iterate through errors
-for e in flows.errors:
-    print 'error:', e
+# construct HTTPFlows, cleverly
+# httpflows = an HTTPFlow for every TCPFlow that didn't cause an exception
+#httpflows = map(try_call(http.HTTPFlow), flows.flowdict.itervalues())
+#httpflows = filter(lambda v: bool(v), httpflows)
+httpflows = []
+for flow in flows.flowdict.itervalues():
+    try:
+        httpflow = http.HTTPFlow(flow)
+        httpflows.append(httpflow)
+    except ValueError:
+        pass
 
-# iterate through flows
-for i,v in enumerate(flows.flowdict.itervalues()):
-    print i, ',', v
-    # write data
-    v.writeout_data(outputdirname + '/flow%d' % i)
-    
+# now get all pairs in one list, also cleverly
+def add_pairs(old_pairs, flow):
+    if flow.pairs:
+        old_pairs += flow.pairs
+    return old_pairs
+all_pairs = reduce(add_pairs, httpflows, [])
+
+pass
+# write it out to outputfile
