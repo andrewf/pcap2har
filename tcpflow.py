@@ -128,9 +128,18 @@ class TCPDirection:
         self.arrival_data.sort(key = lambda v: v[0]) # sort arrivals by seq number
     def calculate_final_arrivals(self):
         '''
-        make self.final_arrival_data valid, or [(seq_num, time)]
+        make self.final_arrival_data valid, or [(seq_num, time)]. Final arrival
+        for a sequence number is when that sequence number of data and all the
+        data before it have arrived, that is, when the data is usable by the
+        application.
         '''
         self.final_arrival_data = []
+        peak_time = 0.0
+        for vertex in self.arrival_data:
+            if vertex[1].ts > peak_time:
+                peak_time = vertex[1].ts
+                self.final_arrival_data.append((vertex[0], vertex[1].ts))
+
     def new_chunk(self, pkt):
         '''
         creates a new TCPChunk for the pkt to live in. Only called if an attempt
