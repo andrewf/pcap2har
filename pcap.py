@@ -4,6 +4,8 @@ from socket import inet_ntoa
 from tcppacket import TCPPacket
 from tcpflow import TCPFlow
 import logging as log
+import os
+import shutil
 
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
@@ -16,7 +18,7 @@ class TCPFlowAccumulator:
         into its dictionary. pcap_reader is expected to be a
         pcaputil.ModifiedReader
         '''
-        self.raw_flowdict = {} # {socket: [TCPPacket]}
+        self.flowdict = {} # {socket: TCPFlow}
         self.errors = []
         debug_pkt_count = 0
         try:
@@ -46,11 +48,8 @@ class TCPFlowAccumulator:
         except dpkt.dpkt.NeedData as e:
             log.warning('A packet in the pcap file was too short, debug_pkt_count=%d' % debug_pkt_count)
             self.errors.append((None, e))
-        # use TCPFlow class to stitch packets
-        self.flowdict = {} # {socket: TCPFlow}
-        for sock, flow in self.raw_flowdict.iteritems():
-            #print 'flowing socket: ', friendly_socket(sock), flow
-            self.flowdict[sock] = TCPFlow(flow)
+        # finish all tcp flows
+        map(TCPFlow.finish, self.flowdict.itervalues())
             
     def process_packet(self, pkt):
         '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
@@ -59,15 +58,17 @@ class TCPFlowAccumulator:
         src, dst = pkt.socket
         #ok, NOW add it
         #print 'processing packet: ', pkt
-        if (src, dst) in self.raw_flowdict:
+        if (src, dst) in self.flowdict:
             #print '  adding as ', (src, dst)
-            self.raw_flowdict[(src,dst)].append(pkt)
-        elif (dst, src) in self.raw_flowdict:
+            self.flowdict[(src,dst)].add(pkt)
+        elif (dst, src) in self.flowdict:
             #print '  adding as ', (dst, src)
-            self.raw_flowdict[(dst, src)].append(pkt)
+            self.flowdict[(dst, src)].add(pkt)
         else:
             #print '  making new dict entry as ', (src, dst)
-            self.raw_flowdict[(src,dst)] = [pkt]
+            newflow = TCPFlow()
+            newflow.add(pkt)
+            self.flowdict[(src,dst)] = newflow
     def flows(self):
         '''lists available flows by socket'''
         return [friendly_socket(s) for s in self.flowdict.keys()]
@@ -133,4 +134,18 @@ def verify_file(filename):
             raise
         i += 1
     # just let the exception fall out
-    
+
+def WriteTCPFlowsFromFile(filename):
+    '''
+    takes a filename, parses the file with TCPFlowAccumulator, and writes the
+    contents of all the flows to a directory "filename.d"
+    '''
+    flows = TCPFlowsFromFile(filename)
+    output_dir = filename + ".d"
+    # get clean directory
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.mkdir(output_dir)
+    # write out data
+    for i, f in enumerate(flows.flowdict.itervalues()):
+        f.writeout_data(os.path.join(output_dir, str(i)))

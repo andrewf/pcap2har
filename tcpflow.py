@@ -2,7 +2,7 @@ HANDSHAKE_DETECTION_TRY_LIMIT = 10 # how many packets to go through looking for 
 
 import tcpseq as seq # hopefully no name collisions
 
-class TCPFLow:
+class TCPFlow:
     '''
     Represents TCP traffic across a given socket, ideally between a TCP
     handshake and clean connection termination.
@@ -19,26 +19,27 @@ class TCPFLow:
     def __init__(self):
         self.fwd = TCPDirection()
         self.rev = TCPDirection()
-        last_pkt = None # maybe just use packets[-1]
+        self.last_pkt = None # maybe just use packets[-1]
         self.first_packet = None
         # socket is also used to tell if flow is in merging mode
-        self.handshake = None
-        packets = []
-        handshake_search_pos = 0 # move forward for every packet added where we haven't found the handshake
+        self.handshake = False # don't bother for now
+        self.packets = []
+        self.handshake_search_pos = 0 # move forward for every packet added where we haven't found the handshake
     def add(self, pkt):
         '''
         called for every packet coming in, instead of iterating through
         a list
         '''
         # make sure packet is in time order
-        if last_packet:
-            if not self.last_pkt.ts < pkt.ts:
+        if self.last_pkt:
+            if self.last_pkt.ts > pkt.ts:
                 # error out
-                raise ValueError or something
+                raise ValueError("packet added to TCPFlow out of chronological order")
         else:
-            first_packet = pkt
-        last_pkt = pkt
-        packets.append(pkt)
+            self.first_packet = pkt
+            self.socket = pkt.socket
+        self.last_pkt = pkt
+        self.packets.append(pkt)
         # look out for handshake
         # add it to the appropriate direction, if we've found or given up on finding handshake
         if self.handshake is not None:
@@ -47,11 +48,17 @@ class TCPFLow:
             else:
                 self.rev.add(pkt)
         else: # if handshake is None, we're still looking for a handshake
-            handshake_candidate = self.packets[self.handshake_search_pos:self.handshake_search_pos+3]
-            if detect_handshake(handshake_candidate):
-                self.handshake = tuple(handshake_candidate)
-                self.socket = handshake[0].socket # use the socket from SYN
-
+            print 'passing when we\'re not supposed to'
+            #handshake_candidate = self.packets[self.handshake_search_pos:self.handshake_search_pos+3]
+            #if detect_handshake(handshake_candidate):
+                #self.handshake = tuple(handshake_candidate)
+                #self.socket = handshake[0].socket # use the socket from SYN
+    def finish(self):
+        '''
+        Notifies the flow that there are no more packets.
+        '''
+        self.fwd.finish()
+        self.rev.finish()
     def samedir(self, pkt):
         '''
         returns whether the passed packet is in the same direction as the
@@ -67,17 +74,61 @@ class TCPFLow:
             return False
         else:
             raise ValueError("TCPFlow.samedir found a packet from the wrong flow")
+    def writeout_data(self, basename):
+        '''
+        writes out the data in the flows to two files named basename-fwd.dat and
+        basename-rev.dat.
+        '''
+        with open(basename + '-fwd.dat', 'wb') as f:
+            f.write(self.fwd.data)
+        with open(basename + '-rev.dat', 'wb') as f:
+            f.write(self.rev.data)
 
 class TCPDirection:
     def __init__(self):
-        arrival_data = [(seq_num, pkt)] # records when a given seq number first arrived
-        final_arrival_data = None or [(seq_num, dpkt_time)]
-        closed_cleanly = False # until proven true
+        self.arrival_data = [] #[(seq_num, pkt)] # records when a given seq number first arrived
+        self.final_arrival_data = None # or [(seq_num, dpkt_time)]
+        self.closed_cleanly = False # until proven true
+        self.chunks = [] # [TCPChunk] sorted by seq_start
     def add(self, pkt):
         '''
         merge in the packet
         '''
-        # log new data in arrival_data
+        # discard packets with no payload. we don't care about them here
+        if pkt.data == '':
+            return
+        # define callback for packet merging
+        def packet_merge_callback(seq_number):
+            self.arrival_data.append((seq_number, pkt))
+        # attempt to merge packet with existing chunks
+        merged = False
+        for i in range(len(self.chunks)):
+            chunk = self.chunks[i]
+            overlapped, result = chunk.merge(pkt, packet_merge_callback)
+            if overlapped: # if the data overlapped
+                # if data was added on the back and there is a chunk after this
+                if result[1] and i < (len(self.chunks)-1):
+                    # try to merge with the next chunk as well
+                    # in case that packet bridged the gap
+                    overlapped2, result2 = chunk.merge(self.chunks[i+1])
+                    if overlapped2: # if that merge worked
+                        assert( (not result2[0]) and (result2[1])) # data should only be added to back
+                        del self.chunks[i+1] # remove the now-redundant chunk
+                merged = True
+                break # skip further chunks
+        if not merged:
+            # nothing overlapped with the packet
+            # we need a new chunk
+            self.new_chunk(pkt)
+    def finish(self):
+        '''
+        notifies the direction that there are no more packets coming.
+        '''
+        if self.chunks:
+            self.data = self.chunks[0].data
+        else:
+            self.data = ''
+        self.arrival_data.sort(key = lambda v: v[0]) # sort arrivals by seq number
     def calculate_final_arrivals(self):
         '''
         make self.final_arrival_data valid, or [(seq_num, time)]
@@ -88,7 +139,12 @@ class TCPDirection:
         creates a new TCPChunk for the pkt to live in. Only called if an attempt
         has been made to merge the packet with all existing chunks
         '''
-        pass
+        chunk = TCPChunk()
+        chunk.merge(pkt)
+        self.chunks.append(chunk)
+        self.sort_chunks() # it would be better to insert the packet sorted
+    def sort_chunks(self):
+        self.chunks.sort(key=lambda chunk: chunk.seq_start)
 
 class TCPChunk:
     '''
@@ -104,7 +160,7 @@ class TCPChunk:
         self.seq_start = None
         self.seq_end = None
 
-    def merge_pkt(self, new, new_seq_callback = None):
+    def merge(self, new, new_seq_callback = None):
         '''
         Attempts to merge the packet or chunk with the existing data. Returns
         details of the operation's success or failure.
@@ -127,17 +183,18 @@ class TCPChunk:
         Note that (True, (False, False)) is a valid value, which indicates that
         the new data was completely inside the existing data
         '''
-        if self.data: # if we have actual data yet (maybe false if there was no init packet)
+        if new.data: # if we have actual data yet (maybe false if there was no init packet)
             # assume self.seq_* are also valid
-            return self.inner_merge((new.seq_start, new.seq_end), pkt.data, new_seq_callback)
-        else:
-            if new.data: # make sure the packet has payload before eating it
+            if self.data:
+                return self.inner_merge((new.seq_start, new.seq_end), new.data, new_seq_callback)
+            else:
+                # if they have data and we don't, just steal theirs
                 self.data = new.data
                 self.seq_start = new.seq_start
                 self.seq_end = new.seq_end
                 return (True, (True, True))
-            # else, there is no data anywhere
-            return (False, (False, False))
+        # else, there is no data anywhere
+        return (False, (False, False))
 
     def inner_merge(self, newseq, newdata, callback):
         '''
@@ -158,18 +215,20 @@ class TCPChunk:
         added_front_data = False
         added_back_data = False
         # front data?
-        if lt(newseq[0], self.seq_start) and lte(self.seq_start, newseq[1]):
-            new_data_length = subtract(self.seq[0], newseq[0])
+        if seq.lt(newseq[0], self.seq_start) and seq.lte(self.seq_start, newseq[1]):
+            new_data_length = seq.subtract(self.seq[0], newseq[0])
             self.data = newdata[:new_data_length] + self.data # slice out new data, stick it on the front
             self.seq_start = newseq[0]
             # notifications
             overlapped = True
             added_front_data = True
-            if callback: callback(newseq[0])
+            if callback:
+                callback(newseq[0])
         # back data?
-        if lte(newseq[0], self.seq_end) and lt(self.seq_end, newseq[1]):
-            new_data_length = subtract(newseq[1], self.seq_start)
-            self.data += newdata[-new_data_length:0]
+        if seq.lte(newseq[0], self.seq_end) and seq.lt(self.seq_end, newseq[1]):
+            new_data_length = seq.subtract(newseq[1], self.seq_end)
+            foo = newdata[-new_data_length:]
+            self.data += foo
             self.seq_end += new_data_length
             # notifications
             overlapped = True
@@ -178,7 +237,7 @@ class TCPChunk:
                 back_seq_start = newseq[1] - (new_data_length - 1) # the first seq number of new data in the back
                 callback(back_seq_start)
         # completely inside?
-        if lte(self.seq_start, newseq[0]) and lte(newseq[1], self.seq_end):
+        if seq.lte(self.seq_start, newseq[0]) and seq.lte(newseq[1], self.seq_end):
             overlapped = True
         # done
         return (overlapped, (added_front_data, added_back_data))
