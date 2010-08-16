@@ -22,10 +22,10 @@ class TCPPacket(object):
         self.ack = tcp.ack
         self.flags = tcp.flags
 
-        self.start_seq = self.tcp.seq
-        self.end_seq = self.tcp.seq + len(self.tcp.data) # - 1
+        self.seq_start = self.tcp.seq
+        self.seq_end = self.tcp.seq + len(self.tcp.data) # - 1
         self.rtt = None
-    
+
     def __cmp__(self, other):
         return cmp(self.ts, other.ts)
     def __eq__(self, other):
@@ -44,9 +44,9 @@ class TCPPacket(object):
             friendly_data(self.tcp.data)[:60]
         )
     def overlaps(self, other):
-        return (self.start_seq <= other.start_seq and \
-                other.start_seq < self.end_seq) \
+        return (self.seq_start <= other.seq_start and \
+                other.seq_start < self.seq_end) \
                               or \
-               (self.start_seq < other.end_seq and \
-                other.end_seq <= self.end_seq)
+               (self.seq_start < other.seq_end and \
+                other.seq_end <= self.seq_end)
 

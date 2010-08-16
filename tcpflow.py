@@ -1,282 +1,184 @@
-from tcppacket import TCPPacket
-from pcaputil import *
-from tcpseq import lt, lte, gt, gte
-import tcpseq
-import logging as log
-from dpkt.tcp import * # get all the flag constances
-from orderedset import OrderedSet
+HANDSHAKE_DETECTION_TRY_LIMIT = 10 # how many packets to go through looking for a handshake
 
-class TCPFlowError(Exception):
-    pass
+import tcpseq as seq # hopefully no name collisions
 
-class TCPDirection:
+class TCPFLow:
     '''
-    contains a single side of a TCP duplex. A TCPFlow will contain two of these,
-    one for forward data and one for reverse. synthesizes the data, and keeps
-    track of whether the connection was closed cleanly.
-    '''
-    def __init__(self, packets):
-        '''
-        Assembles the packets into a single data stream, and gleans any other
-        required information from them.
-        '''
-        self.packets = packets
-        self.data, self.logger = assemble_stream(packets)
-        self.start_time = packets[0].ts
-        self.end_time = packets[-1].ts
-        self.duration = self.end_time - self.start_time
+    Represents TCP traffic across a given socket, ideally between a TCP
+    handshake and clean connection termination.
 
-class TCPFlow:
-    '''assembles a series of tcp packets into streams of the actual data
-    sent.
-
-    Includes forward data (sent) and reverse data (received), from the
-    perspective of the SYN-sender.'''
-    def __init__(self, packets):
-        '''assembles the series. packets is a list of TCPPacket's from the same
-        socket. They should be in order of transmission, otherwise there will
-        probably be bugs.'''
-        self.packets = packets
-        #reference point for determining flow direction
-        self.socket = self.packets[0].socket
-        # discover direction, etc.
-        # grab handshake, if possible
-        # search through several positions in the packet stream
-        self.handshake = None
-        for n in range(0, 10): # we'll only check the first ten positions
-            if (len(packets) > n+3 and detect_handshake(packets[n:n+3])): # bail out early if the packets are too few
-                self.handshake = n # the index at which the handshake starts
-        if not self.handshake:
-            log.warning('flow %s appears not to have a handshake' % friendly_socket(self.socket))
-        # sort packets, disregarding pre-handshake ones
-        self.forward_packets = []
-        self.reverse_packets = []
-        for pkt in self.packets[ (self.handshake or 0) :]:
-            if self.samedir(pkt):
-                self.forward_packets.append(pkt)
-            else:
-                self.reverse_packets.append(pkt)
-        # assemble data
-        self.fwd = TCPDirection(self.forward_packets)
-        self.rev = TCPDirection(self.reverse_packets)
-        # calculate statistics?
-        self.start_time = packets[0].ts
-
-    def samedir(self, pkt):
-        '''returns whether the packet is in the same direction as the canonic
-        direction of the flow.'''
-        src, dst = self.socket
-        if pkt.socket == (src,dst):
-            return True
-        elif pkt.socket == (dst, src):
-            return False
-        else:
-            raise TCPFlowError('In TCPFlow.samedir, found a packet that is from the wrong socket')
-    def __repr__(self):
-        return 'TCPFlow(%s, fwd=%s, rev=%s)' % (
-            friendly_socket(self.socket),
-            friendly_data(self.fwd.data)[:60],
-            friendly_data(self.rev.data)[:60]
-        )
-
-    def writeout_data(self, basename):
-        '''writes out the forward and reverse data of the flow into files named
-        basename-fwd.dat and basename-rev.dat, for debugging purposes'''
-        with open(basename + '-fwd.dat', 'wb') as f:
-            f.write(self.fwd.data)
-        with open(basename + '-rev.dat', 'wb') as f:
-            f.write(self.rev.data)
-
-class TCPDataArrivalLogger:
-    '''
-    Keeps track of when TCP data first arrives. does this by storing a
-    list/set/whatever of tuples (sequence_number, packet), where sequence_number
-    is the first sequence number of the *new* data in packet.
-
-    This information, along with the beginning and end sequence numbers of the
-    data, allows you to find the packet in which a given sequence number of
-    data first arrived, by finding the first number less than the given
-    sequence number and then grabbing the associated packet.
-
-    This class must be created on a per-buffer basis, and merged whenever the
-    buffers are merged.
+    Members:
+    * fwd, rev = TCPDirection, both sides of the communication stream
+    * socket = ((srcip, sport), (dstip, dport)). Used for checking the direction
+    of packets. Taken from SYN or first packet.
+    * packets = list of TCPPacket's, all packets in the flow
+    * first_packet
+    * handshake = None or (syn, synack, ack) or False. None while a handshake is
+    still being searched for, False when we've given up on finding it.
     '''
     def __init__(self):
+        self.fwd = TCPDirection()
+        self.rev = TCPDirection()
+        last_pkt = None # maybe just use packets[-1]
+        self.first_packet = None
+        # socket is also used to tell if flow is in merging mode
+        self.handshake = None
+        packets = []
+        handshake_search_pos = 0 # move forward for every packet added where we haven't found the handshake
+    def add(self, pkt):
         '''
-        Initializes the requisite internal data structure.
+        called for every packet coming in, instead of iterating through
+        a list
         '''
-        self.items = OrderedSet()
-    def add(self, sequence_number, pkt):
+        # make sure packet is in time order
+        if last_packet:
+            if not self.last_pkt.ts < pkt.ts:
+                # error out
+                raise ValueError or something
+        else:
+            first_packet = pkt
+        last_pkt = pkt
+        packets.append(pkt)
+        # look out for handshake
+        # add it to the appropriate direction, if we've found or given up on finding handshake
+        if self.handshake is not None:
+            if self.samedir(pkt):
+                self.fwd.add(pkt)
+            else:
+                self.rev.add(pkt)
+        else: # if handshake is None, we're still looking for a handshake
+            handshake_candidate = self.packets[self.handshake_search_pos:self.handshake_search_pos+3]
+            if detect_handshake(handshake_candidate):
+                self.handshake = tuple(handshake_candidate)
+                self.socket = handshake[0].socket # use the socket from SYN
+
+    def samedir(self, pkt):
         '''
-        Adds a sequence-number/packet pair to the data.
+        returns whether the passed packet is in the same direction as the
+        assumed direction of the flow, which is either that of the SYN or the
+        first packet.
         '''
-        self.items.insert((sequence_number, pkt))
-    def find_packet(self, sequence_number):
+        if not self.socket:
+            raise RuntimeError("called TCPFlow.samedir before direction is determined")
+        src, dst = pkt.socket
+        if self.socket == (src, dst):
+            return True
+        elif self.socket == (dst, src):
+            return False
+        else:
+            raise ValueError("TCPFlow.samedir found a packet from the wrong flow")
+
+class TCPDirection:
+    def __init__(self):
+        arrival_data = [(seq_num, pkt)] # records when a given seq number first arrived
+        final_arrival_data = None or [(seq_num, dpkt_time)]
+        closed_cleanly = False # until proven true
+    def add(self, pkt):
         '''
-        Returns the packet associated with the first sequence number less than
-        or equal to the passed one.
+        merge in the packet
         '''
-        raise NotImplementedError('finding packets by sequence number is not yet fully supported')
-    def merge(self, other):
+        # log new data in arrival_data
+    def calculate_final_arrivals(self):
         '''
-        Merges other's data with this one.
+        make self.final_arrival_data valid, or [(seq_num, time)]
+        '''
+        self.final_arrival_data = []
+    def new_chunk(self, pkt):
+        '''
+        creates a new TCPChunk for the pkt to live in. Only called if an attempt
+        has been made to merge the packet with all existing chunks
         '''
         pass
 
-def assemble_stream(packets):
-    '''does the actual stitching of the passed packets into data.
-    packets = [TCPPacket]
-
-    returns the stitched data'''
-    # store tuples of format: ((seq_begin, seq_end), data_str, arrival_logger)
-    # when a new packet's data overlaps with one, pull that out, merge
-    # them, and replace it.
-    def merge_packet(old, new):
+class TCPChunk:
+    '''
+    A chunk of data from a TCP stream in the process of being merged. Takes the
+    place of the data tuples, ((begin, end), data, logger) in the old algorithm.
+    Adds member functions that encapsulate the main merging logic.
+    '''
+    def __init__(self):
         '''
-        merges the data tuple and packet together, if they overlap, and
-        returns the new data tuple
-
-        old = data tuple ((seq_begin, seq_end), data_str, arrival_logger)
-        new = TCPPacket
+        Basic initialization on the chunk.
         '''
-        # get stuff out
-        arrival_logger = old[2]
-        # create the logging callback
-        def new_seq_number_callback(seq_num):
-            arrival_logger.add(seq_num, new)
-        # do it, passing the callback so new data gets logged
-        merged = inner_merge(old, ((new.start_seq, new.end_seq), new.data), new_seq_number_callback)
-        if merged:
-            #return merged data with the arrival_logger tacked back on
-            return merged + (arrival_logger,)
+        self.data = ''
+        self.seq_start = None
+        self.seq_end = None
+
+    def merge_pkt(self, new, new_seq_callback = None):
+        '''
+        Attempts to merge the packet or chunk with the existing data. Returns
+        details of the operation's success or failure.
+
+        Args:
+        pkt = TCPPacket or TCPChunk
+        new_seq_callback = callable(int) or None
+
+        new_seq_callback is a function that will be called with sequence numbers
+        of the start of data that has arrived for the first time.
+
+        Returns:
+        (overlapped, (added_front_data, added_back_data)): (bool, (bool, bool))
+
+        Overlapped indicates whether the packet/chunk overlapped with the
+        existing data. If so, you can stop trying to merge with other packets/
+        chunks. The bools in the other tuple indicate whether data was added to
+        the front or back of the existing data.
+
+        Note that (True, (False, False)) is a valid value, which indicates that
+        the new data was completely inside the existing data
+        '''
+        if self.data: # if we have actual data yet (maybe false if there was no init packet)
+            # assume self.seq_* are also valid
+            return self.inner_merge((new.seq_start, new.seq_end), pkt.data, new_seq_callback)
         else:
-            return None
+            if new.data: # make sure the packet has payload before eating it
+                self.data = new.data
+                self.seq_start = new.seq_start
+                self.seq_end = new.seq_end
+                return (True, (True, True))
+            # else, there is no data anywhere
+            return (False, (False, False))
 
-    def inner_merge(old, new, new_seq_number_callback = None):
+    def inner_merge(self, newseq, newdata, callback):
         '''
-        Merges just the two data tuples, with an optional callback to be
-        called for new sequence numbers, so they can be logged or whatever.
+        Internal implementation function for merging, very similar in interface
+        to merge_pkt, but more general. It is used for merging in both packets
+        and other TCPChunk's
 
-        old = ((begin_seq, end_seq), data)
-        new = ((begin_seq, end_seq), data)
-        new_seq_number_callback = function(long) or None
+        Args:
+        newseq = (seq_begin, seq_end)
+        newdata = string, new data
+        callback = see new_seq_callback in merge_pkt
 
-        Extra data in the tuples is acceptable, but will not be returned
-
-        Returns the merged tuple, or None they didn't collide
+        Returns:
+        see merge_pkt
         '''
-        # get data in a mutable, easier-to-work-with form
-        oldseq = old[0]
-        newseq = new[0]
-        finaldata = old[1]
-        final_seq_start = oldseq[0]
-        final_seq_end =   oldseq[1]
-        assert(oldseq[0] <= oldseq[1])
-        assert(newseq[0] <= newseq[1])
-        # misc state
-        collided = False # flag for whether the data overlapped
-        # do the merge
-        if lt(newseq[0], oldseq[0]) and lte(oldseq[0], newseq[1]):
-            # add on front data
-            new_data_length = tcpseq.subtract(oldseq[0], newseq[0])
-            finaldata = new[1][:new_data_length] + finaldata # slice out just new data, tack it on front
-            final_seq_start = newseq[0]
-            if new_seq_number_callback: new_seq_number_callback(newseq[0]) # log the new data
-            collided = True
-        # if there's new data hanging off the back edge...
-        if lte(newseq[0], oldseq[1]) and lt(oldseq[1], newseq[1]):
-            #add on back data
-            new_data_length = tcpseq.subtract(newseq[1], oldseq[1])
-            back_seq_start = newseq[1] - (new_data_length - 1) # the first sequence number of the new data on the back end
-            finaldata += new[1][-new_data_length:] # slice out the back of the new data
-            final_seq_end += new_data_length
-            if new_seq_number_callback: new_seq_number_callback(back_seq_start) # log the new data
-            collided = True
-        # if the new data is completely inside the old data
-        if lte(oldseq[0], newseq[0]) and lte(newseq[1], oldseq[1]):
-            collided = True # this will just cause the existing data to be returned
-        # return new data, or None
-        if collided:
-            return ((final_seq_start, final_seq_end), finaldata)
-        else:
-            return None
-    # log stuff
-    # real start of assemble_stream
-    stream_segments = [] # the list of data tuples, pieces of the TCP stream. Sorry for the name collision.
-    for pkt in packets:
-        if not len(pkt.data): continue # skip packets with no payload
-        all_new = True # whether pkt is all new data (needs a new segment, assumed true until proven false)
-        for i, olddata in enumerate(stream_segments):
-            merged = merge_packet(olddata, pkt)
-            if merged:
-                stream_segments[i] = merged # replace old segment with merged one
-                all_new = False
-                break
-        # now we've looked through all the existing data
-        if all_new: # if we need to make a new packet
-            # make a new data segment
-            newlogger = TCPDataArrivalLogger()
-            newlogger.add(pkt.start_seq, pkt)
-            d = ((pkt.start_seq, pkt.end_seq), pkt.data, newlogger)
-            stream_segments.append( d )
-    # now all packets are accounted for
-    # now, segments must be merged
-    num_segments = len(stream_segments)
-    if not num_segments:
-        log.info('TCPFlow.assemble_stream: no data segments')
-        return '', TCPDataArrivalLogger()
-    elif num_segments == 1:
-        # log.debug('TCPFlow.assemble_stream: returning first of', num_segments, 'data chunks')
-        return stream_segments[0][1], stream_segments[0][2]
-    else: # num_segments > 1
-        #merge as many segments as possible with the first one
-        iterator = iter(stream_segments)
-        final = iterator.next()
-        num_merges = 0
-        try:
-            while True:
-                next = iterator.next()
-                #try to merge
-                merged = inner_merge(final, next)
-                if merged: # merged = ((begin, end), data, logger)
-                    num_merges += 1
-                    final[2].merge(next[2]) # merge the loggers
-                    final = (merged) + (final[2],) # tack on merged logger and store it
-        except StopIteration:
-            pass
-        # log and return
-        log.info('TCPFlow.assemble_stream: merged %d chunks out of %d chunks' % (num_merges, num_segments))
-        return final[1:] # strip out the sequence numbers
-
-
-def detect_handshake(packets):
-    '''
-    Checks whether the passed list of TCPPacket's represents a valid TCP
-    handshake. Returns True or False.
-    '''
-    if len(packets) < 3:
-        return False
-    if len(packets) > 3:
-        log.error('too many packets for detect_handshake')
-        return False
-    syn, synack, ack = packets
-    fwd_seq = None
-    rev_seq = None
-    if syn.tcp.flags & TH_SYN and not syn.tcp.flags & TH_ACK:
-        # have syn
-        fwd_seq = syn.seq # start_seq is the seq field of the segment
-        if synack.flags & TH_SYN and synack.flags & TH_ACK and synack.ack == fwd_seq + 1:
-            # have synack
-            rev_seq = synack.seq
-            if ack.flags & TH_ACK and ack.ack == rev_seq + 1 and ack.seq == fwd_seq + 1:
-                # have ack
-                return True
-    return False
-
-def detect_closing_handshake(packets):
-    '''
-    Detect the closing handshake for one side of a tcp connection.
-    packets = TCPPacket[3], both directions, with the first one being sent from
-    the sender of this side of the connection.
-    '''
-    pass
+        # setup
+        overlapped = False
+        added_front_data = False
+        added_back_data = False
+        # front data?
+        if lt(newseq[0], self.seq_start) and lte(self.seq_start, newseq[1]):
+            new_data_length = subtract(self.seq[0], newseq[0])
+            self.data = newdata[:new_data_length] + self.data # slice out new data, stick it on the front
+            self.seq_start = newseq[0]
+            # notifications
+            overlapped = True
+            added_front_data = True
+            if callback: callback(newseq[0])
+        # back data?
+        if lte(newseq[0], self.seq_end) and lt(self.seq_end, newseq[1]):
+            new_data_length = subtract(newseq[1], self.seq_start)
+            self.data += newdata[-new_data_length:0]
+            self.seq_end += new_data_length
+            # notifications
+            overlapped = True
+            added_back_data = True
+            if callback:
+                back_seq_start = newseq[1] - (new_data_length - 1) # the first seq number of new data in the back
+                callback(back_seq_start)
+        # completely inside?
+        if lte(self.seq_start, newseq[0]) and lte(newseq[1], self.seq_end):
+            overlapped = True
+        # done
+        return (overlapped, (added_front_data, added_back_data))
