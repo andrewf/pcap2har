@@ -97,14 +97,11 @@ class TCPDirection:
         # discard packets with no payload. we don't care about them here
         if pkt.data == '':
             return
-        # define callback for packet merging
-        def packet_merge_callback(seq_number):
-            self.arrival_data.append((seq_number, pkt))
         # attempt to merge packet with existing chunks
         merged = False
         for i in range(len(self.chunks)):
             chunk = self.chunks[i]
-            overlapped, result = chunk.merge(pkt, packet_merge_callback)
+            overlapped, result = chunk.merge(pkt, self.create_merge_callback(pkt))
             if overlapped: # if the data overlapped
                 # if data was added on the back and there is a chunk after this
                 if result[1] and i < (len(self.chunks)-1):
@@ -140,11 +137,19 @@ class TCPDirection:
         has been made to merge the packet with all existing chunks
         '''
         chunk = TCPChunk()
-        chunk.merge(pkt)
+        chunk.merge(pkt, self.create_merge_callback(pkt))
         self.chunks.append(chunk)
         self.sort_chunks() # it would be better to insert the packet sorted
     def sort_chunks(self):
         self.chunks.sort(key=lambda chunk: chunk.seq_start)
+    def create_merge_callback(self, pkt):
+        '''
+        Returns a function that will serve as a callback for TCPChunk. It will
+        add the passed sequence number and the packet to self.arrival_data.
+        '''
+        def callback(seq_num):
+            self.arrival_data.append((seq_num, pkt))
+        return callback
 
 class TCPChunk:
     '''
@@ -192,6 +197,8 @@ class TCPChunk:
                 self.data = new.data
                 self.seq_start = new.seq_start
                 self.seq_end = new.seq_end
+                if new_seq_callback:
+                    new_seq_callback(new.seq_start)
                 return (True, (True, True))
         # else, there is no data anywhere
         return (False, (False, False))
@@ -227,14 +234,13 @@ class TCPChunk:
         # back data?
         if seq.lte(newseq[0], self.seq_end) and seq.lt(self.seq_end, newseq[1]):
             new_data_length = seq.subtract(newseq[1], self.seq_end)
-            foo = newdata[-new_data_length:]
-            self.data += foo
+            self.data += newdata[-new_data_length:]
             self.seq_end += new_data_length
             # notifications
             overlapped = True
             added_back_data = True
             if callback:
-                back_seq_start = newseq[1] - (new_data_length - 1) # the first seq number of new data in the back
+                back_seq_start = newseq[1] - new_data_length # the first seq number of new data in the back
                 callback(back_seq_start)
         # completely inside?
         if seq.lte(self.seq_start, newseq[0]) and seq.lte(newseq[1], self.seq_end):
