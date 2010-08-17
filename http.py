@@ -25,6 +25,19 @@ class HTTPFlow:
         else:
             self.pairs = None
 
+class Request:
+    '''
+    Contains a dpkt.http.Request, as well as other data required to build a HAR,
+    including start and end time.
+    
+    * request = dpkt.http.Request
+    * bytes_parsed: how many bytes of input were consumed
+    * start_time
+    * end_time
+    '''
+    pass
+
+
 def gather_messages(MessageClass, data):
     '''
     Attempts to construct a series of MessageClass objects from the data. The
