@@ -25,31 +25,62 @@ class HTTPFlow:
         else:
             self.pairs = None
 
-class Request:
+class Message:
     '''
-    Contains a dpkt.http.Request, as well as other data required to build a HAR,
-    including start and end time.
+    Contains a dpkt.http.Request/Response, as well as other data required to
+    build a HAR, including (mostly) start and end time.
     
-    * request = dpkt.http.Request
-    * bytes_parsed: how many bytes of input were consumed
+    * msg: underlying dpkt class
+    * data_consumed: how many bytes of input were consumed
     * start_time
     * end_time
     '''
-    pass
+    def __init__(self, tcpdir, pointer, msgclass):
+        '''
+        Args:
+        tcpdir = TCPDirection
+        pointer = position within tcpdir.data to start parsing from. byte index
+        msgclass = dpkt.http.Request/Response
+        '''
+        # attempt to parse as http. let exception fall out to caller
+        self.msg = msgclass(tcpdir.data[pointer:])
+        self.data = self.msg.data
+        self.data_consumed = (len(tcpdir.data) - pointer) - len(self.data)
+        # calculate sequence numbers of data
+        self.seq_start = tcpdir.byte_to_seq(pointer)
+        self.seq_end = tcpdir.byte_to_seq(pointer + self.data_consumed) # past-the-end
+        # calculate arrival_times
+        self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
+        self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        
+class Request(Message):
+    '''
+    HTTP request.
+    '''
+    def __init__(self, tcpdir, pointer):
+        Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
 
+class Response(Message):
+    '''
+    HTTP response.
+    '''
+    def __init__(self, tcpdir, pointer):
+        Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
 
-def gather_messages(MessageClass, data):
+def gather_messages(MessageClass, tcpdir):
     '''
     Attempts to construct a series of MessageClass objects from the data. The
     basic idea comes from pyper's function, HTTPFlow.analyze.gather_messages.
-    data = string
+    Args
+    MessageClass = class, Request or Response
+    tcpdir = TCPDirection, from which will be extracted the data
     '''
-    messages = [] # MessageClass[]
-    curr_data = data
-    while len(curr_data):
-        msg = MessageClass(curr_data) # if it fails, let the exception fall out to the caller
+    messages = [] # [MessageClass]
+    pointer = 0
+    while pointer < len(tcpdir.data):
+        msg = MessageClass(tcpdir, pointer)
         messages.append(msg)
-        curr_data = msg.data # remaining messages, if any, were stored in the previous message's data
+        pointer += msg.data_consumed
     return messages
 
 def parse_streams(request_stream, response_stream):
@@ -63,8 +94,8 @@ def parse_streams(request_stream, response_stream):
     response list or None
     '''
     try:
-        requests = gather_messages(dpkt.http.Request, request_stream)
-        responses = gather_messages(dpkt.http.Response, response_stream)
+        requests = gather_messages(Request, request_stream)
+        responses = gather_messages(Response, response_stream)
     except dpkt.UnpackError:
         return False, None, None
     else:

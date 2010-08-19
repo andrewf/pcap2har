@@ -23,40 +23,11 @@ else:
     parser.print_help()
     sys.exit()
 
-# read pcap file
-reader = ModifiedReader(open(inputfile,'rb'))
-flows = pcap.TCPFlowAccumulator(reader)
+flows = pcap.TCPFlowsFromFile(inputfile)
 
-def try_call(function):
-    '''
-    returns a function that tries to call the passed function, but returns None
-    if the function raises and exception.
-    '''
-    def wrapped(*args, **kwargs):
-        try:
-            return function(*args, **kwargs)
-        except Exception:
-            return None
-    return wrapped
+flow = flows.get_flow(fwd='GET /fhs/fhs.xml')
 
-# construct HTTPFlows, cleverly
-# httpflows = an HTTPFlow for every TCPFlow that didn't cause an exception
-#httpflows = map(try_call(http.HTTPFlow), flows.flowdict.itervalues())
-#httpflows = filter(lambda v: bool(v), httpflows)
-httpflows = []
-for flow in flows.flowdict.itervalues():
-    try:
-        httpflow = http.HTTPFlow(flow)
-        httpflows.append(httpflow)
-    except ValueError:
-        pass
-
-# now get all pairs in one list, also cleverly
-def add_pairs(old_pairs, flow):
-    if flow.pairs:
-        old_pairs += flow.pairs
-    return old_pairs
-all_pairs = reduce(add_pairs, httpflows, [])
+requests  = http.gather_messages(http.Request, flow.fwd)
+responses = http.gather_messages(http.Response, flow.rev)
 
 pass
-# write it out to outputfile

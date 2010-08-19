@@ -131,10 +131,9 @@ def verify_file(filename):
             eth = dpkt.ethernet.Ethernet(pkt[1])
         except dpkt.UnpackError:
             print 'error in packet #', i
-            raise
+            raise # let it hit the console
         i += 1
-    # just let the exception fall out
-
+        
 def WriteTCPFlowsFromFile(filename):
     '''
     takes a filename, parses the file with TCPFlowAccumulator, and writes the

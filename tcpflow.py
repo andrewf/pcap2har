@@ -109,7 +109,6 @@ class TCPDirection:
         self.closed_cleanly = False # until proven true
         self.chunks = [] # [TCPChunk] sorted by seq_start
         self.flow = flow # the parent TCPFlow. we need info from it
-        self.merging = False
     def add(self, pkt):
         '''
         merge in the packet
@@ -186,7 +185,7 @@ class TCPDirection:
         Converts the passed byte index to a sequence number in the stream. byte
         is assumed to be zero-based.
         '''
-        if self.handshake:
+        if self.flow.handshake:
             return byte + self.flow.handshake[0].seq + 1
         else:
             return byte + self.flow.first_packet.seq
@@ -198,15 +197,16 @@ class TCPDirection:
         must have been called.
         '''
         if self.arrival_data:
-            return self.arrival_data.find_le(seq_num)
+            return self.arrival_data.find_le(seq_num)[1]
     def seq_final_arrival(self, seq_num):
         '''
-        Returns the time at which the seq number had fully arrived.
-        self.final_arrival_data must be a SortedCollection; self.finish() must
-        have been called.
+        Returns the time at which the seq number had fully arrived. Will
+        calculate final_arrival_data if it has not been already. Still requires
+        self.arrival_data to be sorted by seq number, most likely a SortedCollection.
         '''
-        if self.final_arrival_data:
-            return self.final_arrival_data.find_le(seq_num)        
+        if not self.final_arrival_data:
+            self.calculate_final_arrivals()
+        return self.final_arrival_data.find_le(seq_num)[1]
 
 class TCPChunk:
     '''
