@@ -1,6 +1,8 @@
 HANDSHAKE_DETECTION_TRY_LIMIT = 10 # how many packets to go through looking for a handshake
 
 import tcpseq as seq # hopefully no name collisions
+from sortedcollection import SortedCollection
+from dpkt.tcp import *
 
 class TCPFlow:
     '''
@@ -17,46 +19,61 @@ class TCPFlow:
     still being searched for, False when we've given up on finding it.
     '''
     def __init__(self):
-        self.fwd = TCPDirection()
-        self.rev = TCPDirection()
-        self.last_pkt = None # maybe just use packets[-1]
-        self.first_packet = None
-        # socket is also used to tell if flow is in merging mode
-        self.handshake = False # don't bother for now
+        self.fwd = TCPDirection(self)
+        self.rev = TCPDirection(self)
+        self.handshake = None # don't bother for now
+        self.socket = None
         self.packets = []
-        self.handshake_search_pos = 0 # move forward for every packet added where we haven't found the handshake
     def add(self, pkt):
         '''
         called for every packet coming in, instead of iterating through
         a list
         '''
         # make sure packet is in time order
-        if self.last_pkt:
-            if self.last_pkt.ts > pkt.ts:
+        if len(self.packets): # if we have received packets before...
+            if self.packets[-1].ts > pkt.ts: # if this one is out of order...
                 # error out
                 raise ValueError("packet added to TCPFlow out of chronological order")
-        else:
-            self.first_packet = pkt
-            self.socket = pkt.socket
-        self.last_pkt = pkt
         self.packets.append(pkt)
         # look out for handshake
         # add it to the appropriate direction, if we've found or given up on finding handshake
         if self.handshake is not None:
-            if self.samedir(pkt):
-                self.fwd.add(pkt)
-            else:
-                self.rev.add(pkt)
+            self.merge_pkt(pkt)
         else: # if handshake is None, we're still looking for a handshake
-            print 'passing when we\'re not supposed to'
-            #handshake_candidate = self.packets[self.handshake_search_pos:self.handshake_search_pos+3]
-            #if detect_handshake(handshake_candidate):
-                #self.handshake = tuple(handshake_candidate)
-                #self.socket = handshake[0].socket # use the socket from SYN
+            if len(self.packets) > 13: # or something like that
+                # give up
+                self.handshake = False
+                self.socket = self.packets[0].socket
+                self.flush_packets() # merge all stored packets
+            # check last three packets
+            elif detect_handshake(self.packets[-3:]): # function handles packets < 3 case
+                self.handshake = tuple(self.packets[-3:])
+                self.socket = self.handshake[0].socket
+                self.flush_packets()
+    def flush_packets(self):
+        '''
+        Flush packet buffer by merging the packets into either fwd or rev.
+        '''
+        for p in self.packets:
+            self.merge_pkt(p)
+            
+    def merge_pkt(self, pkt):
+        '''
+        Merges the packet into either the forward or reverse stream.
+        '''
+        if self.samedir(pkt):
+            self.fwd.add(pkt)
+        else:
+            self.rev.add(pkt)
     def finish(self):
         '''
         Notifies the flow that there are no more packets.
         '''
+        # handle the case where no handshake was detected
+        if self.handshake is None:
+            self.handshake = False
+            self.socket = self.packets[0].socket
+            self.flush_packets()
         self.fwd.finish()
         self.rev.finish()
     def samedir(self, pkt):
@@ -64,6 +81,7 @@ class TCPFlow:
         returns whether the passed packet is in the same direction as the
         assumed direction of the flow, which is either that of the SYN or the
         first packet.
+        Assumes self.handshake is not None
         '''
         if not self.socket:
             raise RuntimeError("called TCPFlow.samedir before direction is determined")
@@ -85,11 +103,13 @@ class TCPFlow:
             f.write(self.rev.data)
 
 class TCPDirection:
-    def __init__(self):
+    def __init__(self, flow):
         self.arrival_data = [] #[(seq_num, pkt)] # records when a given seq number first arrived
         self.final_arrival_data = None # or [(seq_num, dpkt_time)]
         self.closed_cleanly = False # until proven true
         self.chunks = [] # [TCPChunk] sorted by seq_start
+        self.flow = flow # the parent TCPFlow. we need info from it
+        self.merging = False
     def add(self, pkt):
         '''
         merge in the packet
@@ -117,6 +137,7 @@ class TCPDirection:
             # nothing overlapped with the packet
             # we need a new chunk
             self.new_chunk(pkt)
+            
     def finish(self):
         '''
         notifies the direction that there are no more packets coming.
@@ -125,20 +146,21 @@ class TCPDirection:
             self.data = self.chunks[0].data
         else:
             self.data = ''
-        self.arrival_data.sort(key = lambda v: v[0]) # sort arrivals by seq number
+        self.arrival_data = SortedCollection(self.arrival_data, key=lambda v: v[0])
     def calculate_final_arrivals(self):
         '''
-        make self.final_arrival_data valid, or [(seq_num, time)]. Final arrival
+        make self.final_arrival_data a SortedCollection. Final arrival
         for a sequence number is when that sequence number of data and all the
         data before it have arrived, that is, when the data is usable by the
         application.
         '''
         self.final_arrival_data = []
         peak_time = 0.0
-        for vertex in self.arrival_data:
+        for vertex in self.arrival_data: # final arrival vertex always coincides with arrival vertex
             if vertex[1].ts > peak_time:
                 peak_time = vertex[1].ts
                 self.final_arrival_data.append((vertex[0], vertex[1].ts))
+        self.final_arrival_data = SortedCollection(self.final_arrival_data, key=lambda v: v[0])
 
     def new_chunk(self, pkt):
         '''
@@ -159,6 +181,32 @@ class TCPDirection:
         def callback(seq_num):
             self.arrival_data.append((seq_num, pkt))
         return callback
+    def byte_to_seq(self, byte):
+        '''
+        Converts the passed byte index to a sequence number in the stream. byte
+        is assumed to be zero-based.
+        '''
+        if self.handshake:
+            return byte + self.flow.handshake[0].seq + 1
+        else:
+            return byte + self.flow.first_packet.seq
+    
+    def seq_arrival(self, seq_num):
+        '''
+        returns the packet in which the specified sequence number first arrived.
+        self.arrival_data must be a SortedCollection at this point; self.finish()
+        must have been called.
+        '''
+        if self.arrival_data:
+            return self.arrival_data.find_le(seq_num)
+    def seq_final_arrival(self, seq_num):
+        '''
+        Returns the time at which the seq number had fully arrived.
+        self.final_arrival_data must be a SortedCollection; self.finish() must
+        have been called.
+        '''
+        if self.final_arrival_data:
+            return self.final_arrival_data.find_le(seq_num)        
 
 class TCPChunk:
     '''
@@ -256,3 +304,27 @@ class TCPChunk:
             overlapped = True
         # done
         return (overlapped, (added_front_data, added_back_data))
+
+def detect_handshake(packets):
+    '''
+    Checks whether the passed list of TCPPacket's represents a valid TCP
+    handshake. Returns True or False.
+    '''
+    if len(packets) < 3:
+        return False
+    if len(packets) > 3:
+        log.error('too many packets for detect_handshake')
+        return False
+    syn, synack, ack = packets
+    fwd_seq = None
+    rev_seq = None
+    if syn.tcp.flags & TH_SYN and not syn.tcp.flags & TH_ACK:
+        # have syn
+        fwd_seq = syn.seq # start_seq is the seq field of the segment
+        if synack.flags & TH_SYN and synack.flags & TH_ACK and synack.ack == fwd_seq + 1:
+            # have synack
+            rev_seq = synack.seq
+            if ack.flags & TH_ACK and ack.ack == rev_seq + 1 and ack.seq == fwd_seq + 1:
+                # have ack
+                return True
+    return False
