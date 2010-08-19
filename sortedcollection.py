@@ -158,6 +158,8 @@ class SortedCollection(object):
 
         '''
         i = bisect_left(self._keys, key)
+        if i == len(self._keys):
+            return self._items[-1]
         if self._keys[i] == key:
             return self._items[i]
         if i == 0:
