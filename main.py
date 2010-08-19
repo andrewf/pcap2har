@@ -25,9 +25,12 @@ else:
 
 flows = pcap.TCPFlowsFromFile(inputfile)
 
-flow = flows.get_flow(fwd='GET /fhs/fhs.xml')
-
-requests  = http.gather_messages(http.Request, flow.fwd)
-responses = http.gather_messages(http.Response, flow.rev)
+# generate HTTP Flows
+httpflows = []
+for f in flows.flowdict.itervalues():
+    try:
+        httpflows.append(http.HTTPFlow(f))
+    except ValueError:
+        pass
 
 pass

@@ -7,13 +7,13 @@ class HTTPFlow:
     '''
     def __init__(self, tcpflow):
         # try parsing it with forward as request dir
-        success, requests, responses = parse_streams(tcpflow.fwd.data, tcpflow.rev.data)
+        success, requests, responses = parse_streams(tcpflow.fwd, tcpflow.rev)
         if not success:
-            success, requests, responses = parse_streams(flow.rev.data, flow.fwd.data)
+            success, requests, responses = parse_streams(tcpflow.rev, tcpflow.fwd)
             if not success:
                 # flow is not HTTP
                 raise ValueError('TCPFlow does not contain HTTP')
-        # we have requests/responses; check and store
+        # we have requests/responses. store them
         self.requests = requests
         self.responses = responses
         if len(requests) == len(responses):            
@@ -67,6 +67,15 @@ class Response(Message):
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
 
+class MessagePair:
+    '''
+    An HTTP Request/Response pair/transaction/whatever. Loosely corresponds to
+    a HAR entry.
+    '''
+    def __init__(self, request, response):
+        self.request = request
+        self.response = response
+    
 def gather_messages(MessageClass, tcpdir):
     '''
     Attempts to construct a series of MessageClass objects from the data. The
@@ -88,6 +97,8 @@ def parse_streams(request_stream, response_stream):
     attempts to construct dpkt.http.Request/Response's from the corresponding
     passed streams. Failure may either mean that the streams are malformed or
     they are simply switched
+    Args:
+    request_stream, response_stream = TCPDirection
     Returns:
     True or False, whether parsing succeeded
     request list or None
