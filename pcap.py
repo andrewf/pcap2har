@@ -1,11 +1,11 @@
 import dpkt
 from pcaputil import *
 from socket import inet_ntoa
-from tcppacket import TCPPacket
-from tcpflow import TCPFlow
+
 import logging as log
 import os
 import shutil
+import tcp
 
 class TCPFlowAccumulator:
     '''Takes a list of TCP packets and organizes them into distinct
@@ -18,7 +18,7 @@ class TCPFlowAccumulator:
         into its dictionary. pcap_reader is expected to be a
         pcaputil.ModifiedReader
         '''
-        self.flowdict = {} # {socket: TCPFlow}
+        self.flowdict = {} # {socket: tcp.Flow}
         self.errors = []
         debug_pkt_count = 0
         try:
@@ -41,7 +41,7 @@ class TCPFlowAccumulator:
                             # then it's a TCP packet
                             tcp = ip.data
                             # process it
-                            tcppkt = TCPPacket(pkt[0], pkt[1], eth, ip, tcp)
+                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip, tcp)
                             self.process_packet(tcppkt) # organize by socket
                 except dpkt.Error as e:
                     self.errors.append((pkt, e, debug_pkt_count))
@@ -49,8 +49,8 @@ class TCPFlowAccumulator:
             log.warning('A packet in the pcap file was too short, debug_pkt_count=%d' % debug_pkt_count)
             self.errors.append((None, e))
         # finish all tcp flows
-        map(TCPFlow.finish, self.flowdict.itervalues())
-            
+        map(tcp.Flow.finish, self.flowdict.itervalues())
+
     def process_packet(self, pkt):
         '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
         #try both orderings of src/dst socket components
@@ -66,18 +66,18 @@ class TCPFlowAccumulator:
             self.flowdict[(dst, src)].add(pkt)
         else:
             #print '  making new dict entry as ', (src, dst)
-            newflow = TCPFlow()
+            newflow = tcp.Flow()
             newflow.add(pkt)
             self.flowdict[(src,dst)] = newflow
     def flows(self):
         '''lists available flows by socket'''
         return [friendly_socket(s) for s in self.flowdict.keys()]
-    
+
     def get_flow(self, **kwargs):
         '''
         Pick out a flow by criteria determined by kwargs. Return the first one
         that matches, along with its socket. Meant for console use.
-        
+
         Keyword argument values:
         socket = pick flow according to socket
         fwd = string, beginning of fwd data
@@ -133,7 +133,7 @@ def verify_file(filename):
             print 'error in packet #', i
             raise # let it hit the console
         i += 1
-        
+
 def WriteTCPFlowsFromFile(filename):
     '''
     takes a filename, parses the file with TCPFlowAccumulator, and writes the

@@ -1,7 +1,7 @@
 import dpkt
 from pcaputil import *
 
-class TCPPacket(object):
+class Packet(object):
     '''copied from pyper, with additions. represents a TCP packet. contains
     socket, timestamp, and data'''
     def __init__(self, ts, buf, eth, ip, tcp):
