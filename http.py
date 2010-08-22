@@ -1,5 +1,11 @@
 import dpkt
 
+class HTTPError(Exception):
+    '''
+    Thrown when HTTP cannot be parsed from the given data.
+    '''
+    pass
+
 class HTTPFlow:
     '''
     Parses a TCPFlow into HTTP request/response pairs. Or not, depending on the
@@ -12,11 +18,11 @@ class HTTPFlow:
             success, requests, responses = parse_streams(tcpflow.rev, tcpflow.fwd)
             if not success:
                 # flow is not HTTP
-                raise ValueError('TCPFlow does not contain HTTP')
+                raise HTTPError('TCPFlow does not contain HTTP')
         # we have requests/responses. store them
         self.requests = requests
         self.responses = responses
-        if len(requests) == len(responses):            
+        if len(requests) == len(responses):
             self.pairs = zip(requests, responses)
         elif len(requests) > len(responses):
             #pad responses with None
@@ -29,7 +35,7 @@ class Message:
     '''
     Contains a dpkt.http.Request/Response, as well as other data required to
     build a HAR, including (mostly) start and end time.
-    
+
     * msg: underlying dpkt class
     * data_consumed: how many bytes of input were consumed
     * start_time
@@ -52,7 +58,7 @@ class Message:
         # calculate arrival_times
         self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
         self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
-        
+
 class Request(Message):
     '''
     HTTP request.
@@ -75,7 +81,7 @@ class MessagePair:
     def __init__(self, request, response):
         self.request = request
         self.response = response
-    
+
 def gather_messages(MessageClass, tcpdir):
     '''
     Attempts to construct a series of MessageClass objects from the data. The
