@@ -39,9 +39,8 @@ class TCPFlowAccumulator:
                         ip = eth.data
                         if isinstance(ip.data, dpkt.tcp.TCP):
                             # then it's a TCP packet
-                            tcp = ip.data
                             # process it
-                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip, tcp)
+                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip, ip.data)
                             self.process_packet(tcppkt) # organize by socket
                 except dpkt.Error as e:
                     self.errors.append((pkt, e, debug_pkt_count))
