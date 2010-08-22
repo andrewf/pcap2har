@@ -6,7 +6,6 @@ import optparse
 import logging
 import sys
 import http
-from pcaputil import *
 
 # get cmdline args/options
 parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
@@ -30,7 +29,7 @@ httpflows = []
 for f in flows.flowdict.itervalues():
     try:
         httpflows.append(http.HTTPFlow(f))
-    except ValueError:
+    except http.HTTPError as e:
         pass
 
 pass
