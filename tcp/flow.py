@@ -1,4 +1,5 @@
 from tcp.direction import Direction
+import tcp
 
 import tcpseq as seq # hopefully no name collisions
 from sortedcollection import SortedCollection
@@ -46,7 +47,7 @@ class Flow:
                 self.socket = self.packets[0].socket
                 self.flush_packets() # merge all stored packets
             # check last three packets
-            elif detect_handshake(self.packets[-3:]): # function handles packets < 3 case
+            elif tcp.detect_handshake(self.packets[-3:]): # function handles packets < 3 case
                 self.handshake = tuple(self.packets[-3:])
                 self.socket = self.handshake[0].socket
                 self.flush_packets()

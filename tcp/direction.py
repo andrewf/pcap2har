@@ -1,4 +1,4 @@
-from tcp.chunk import Chunk
+from sortedcollection import SortedCollection
 
 class Direction:
     def __init__(self, flow):
@@ -7,6 +7,7 @@ class Direction:
         self.closed_cleanly = False # until proven true
         self.chunks = [] # [TCPChunk] sorted by seq_start
         self.flow = flow # the parent TCPFlow. we need info from it
+        self.seq_start= None # the seq number of the first byte of data, valid after finish() if self.data is valid
     def add(self, pkt):
         '''
         merge in the packet
@@ -41,6 +42,7 @@ class Direction:
         '''
         if self.chunks:
             self.data = self.chunks[0].data
+            self.seq_start = self.chunks[0].seq_start
         else:
             self.data = ''
         self.arrival_data = SortedCollection(self.arrival_data, key=lambda v: v[0])
@@ -61,10 +63,10 @@ class Direction:
 
     def new_chunk(self, pkt):
         '''
-        creates a new TCPChunk for the pkt to live in. Only called if an attempt
+        creates a new tcp.Chunk for the pkt to live in. Only called if an attempt
         has been made to merge the packet with all existing chunks
         '''
-        chunk = Chunk()
+        chunk = tcp.Chunk()
         chunk.merge(pkt, self.create_merge_callback(pkt))
         self.chunks.append(chunk)
         self.sort_chunks() # it would be better to insert the packet sorted
@@ -83,8 +85,8 @@ class Direction:
         Converts the passed byte index to a sequence number in the stream. byte
         is assumed to be zero-based.
         '''
-        if self.flow.handshake:
-            return byte + self.flow.handshake[0].seq + 1
+        if self.seq_start:
+            return byte + self.seq_start + 1
         else:
             return byte + self.flow.first_packet.seq
 
