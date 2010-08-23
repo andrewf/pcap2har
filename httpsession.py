@@ -3,7 +3,7 @@ Parses a list of HTTPFlows into data suitable for writing to a HAR file.
 '''
 
 from datetime import datetime
-from pcaputil import ms_from_timedelta
+from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 
 class Page:
     def __init__(self, title, startedDateTime):
@@ -19,7 +19,13 @@ class Entry:
     * response = http.Response
     * page_ref = string
     * startedDateTime = python datetime
-    * total_time = milliseconds
+    * total_time = from sending of request to end of response, milliseconds
+    * time_blocked
+    * time_dnsing
+    * time_connecting
+    * time_sending
+    * time_waiting
+    * time_receiving
     '''
     def __init__(self, request, response):
         self.request = request
@@ -30,6 +36,19 @@ class Entry:
         self.total_time = ms_from_timedelta(
             endedDateTime - self.startedDateTime # plus connection time, someday
         )
+        # calculate other timings
+        self.time_blocked = -1
+        self.time_dnsing = -1
+        self.time_connecting = -1
+        self.time_sending = \
+            ms_from_dpkt_time(request.ts_end - request.ts_start)
+        self.time_waiting = \
+            ms_from_dpkt_time(response.ts_start - request.ts_end)
+        self.time_receiving = \
+            ms_from_dpkt_time(response.ts_end - response.ts_start)
+        # check if timing calculations are consistent
+        if self.time_sending + self.time_waiting + self.time_receiving != self.total_time:
+            pass
     def json_repr(self):
         '''
         return a JSON serializable python object representation of self.
@@ -40,6 +59,14 @@ class Entry:
             'time': self.total_time,
             'request': self.request,
             'response': self.response,
+            'timings': {
+                'blocked': self.time_blocked,
+                'dns': self.time_dnsing,
+                'connect': self.time_connecting,
+                'send': self.time_sending,
+                'wait': self.time_waiting,
+                'receive': self.time_receiving
+            }
         }
 
 class UserAgentTracker:
@@ -57,7 +84,9 @@ class UserAgentTracker:
         '''
         The agent string with the most uses
         '''
-        if len(self.data) == 1:
+        if not len(self.data):
+            return None
+        elif len(self.data) == 1:
             return self.data.keys()[0]
         else:
             # max returns first value of tuple produced when iterating through
