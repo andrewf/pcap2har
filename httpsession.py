@@ -38,16 +38,8 @@ class Entry:
             'page_ref': self.page_ref,
             'startedDateTime': self.startedDateTime.isoformat(),
             'time': self.total_time,
-            'request': {
-                'method': self.request.msg.method,
-                'url': self.request.msg.uri,
-                'httpVersion': self.request.msg.version
-            },
-            'response': {
-                'status': self.response.msg.status,
-                'statusText': self.response.msg.reason,
-                'httpVersion': self.response.msg.version,
-            }
+            'request': self.request,
+            'response': self.response,
         }
 
 class UserAgentTracker:
@@ -68,7 +60,10 @@ class UserAgentTracker:
         if len(self.data) == 1:
             return self.data.keys()[0]
         else:
-            return 'too many'
+            # max returns first value of tuple produced when iterating through
+            # dict, in this case, the user-agent string, even though the key
+            # function has access to the full tuple
+            return max(self.data, key=lambda v: v[0])
 
 class HTTPSession(object):
     '''
@@ -115,6 +110,6 @@ class HTTPSession(object):
                     'version': 'mumble'
                 },
                 'pages': [],
-                'entries': [entry.json_repr() for entry in self.entries]
+                'entries': self.entries
             }
         }

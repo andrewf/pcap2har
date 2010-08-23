@@ -7,6 +7,7 @@ import logging
 import sys
 import http
 import httpsession
+import har
 import json
 
 # get cmdline args/options
@@ -42,9 +43,7 @@ pairs = reduce(combine_pairs, httpflows, [])
 # parse HAR stuff
 session = httpsession.HTTPSession(pairs)
 
-d = session.json_repr()
-
 with open(outputfile, 'w') as f:
-    json.dump(d, f, indent=4)
+    json.dump(session, f, cls=har.JsonReprEncoder, indent=2)
 
 pass
