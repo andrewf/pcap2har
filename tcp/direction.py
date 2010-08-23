@@ -1,4 +1,5 @@
 from sortedcollection import SortedCollection
+import tcp
 
 class Direction:
     def __init__(self, flow):

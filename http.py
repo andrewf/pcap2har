@@ -1,5 +1,15 @@
 import dpkt
 
+def find_index(f, seq):
+    '''
+    returns the index of the first item in seq for which predicate f returns
+    True. If no matching item is found, LookupError is raised.
+    '''
+    for i, item in enumerate(seq):
+        if f(item):
+            return i
+    raise LookupError('no item was found in the sequence that matched the predicate')
+
 class HTTPError(Exception):
     '''
     Thrown when HTTP cannot be parsed from the given data.
@@ -9,7 +19,7 @@ class HTTPError(Exception):
 class HTTPFlow:
     '''
     Parses a TCPFlow into HTTP request/response pairs. Or not, depending on the
-    integrity of the flow.
+    integrity of the flow. After __init__, self.pairs, 
     '''
     def __init__(self, tcpflow):
         # try parsing it with forward as request dir
@@ -19,17 +29,25 @@ class HTTPFlow:
             if not success:
                 # flow is not HTTP
                 raise HTTPError('TCPFlow does not contain HTTP')
-        # we have requests/responses. store them
-        self.requests = requests
-        self.responses = responses
-        if len(requests) == len(responses):
-            self.pairs = zip(requests, responses)
-        elif len(requests) > len(responses):
-            #pad responses with None
-            responses += [None for i in range(len(requests) - len(responses))]
-            self.pairs = zip(requests, responses)
-        else:
-            self.pairs = None
+        # match up requests with nearest response that occured after them
+        # first request is the benchmark; responses before that are irrelevant for now
+        self.pairs = []
+        try:
+            # find the first response to a request we know about, that is, the first response after the first request
+            first_response_index = find_index(lambda response: response.ts_start > requests[0].ts_start, responses)
+            # these are responses that match up with our requests
+            pairable_responses = responses[first_response_index:]
+            if len(requests) > len(pairable_responses): # if there are more requests than responses
+                # pad responses with None
+                pairable_responses.extend( [None for i in range(len(requests) - len(pairable_responses))] )
+            # if there are more responses, we would just ignore them anyway, which zip does for use
+            # create MessagePair's
+            for req, resp in zip(requests, responses):
+                self.pairs.append(MessagePair(req, resp))
+        except LookupError:
+            # there were no responses after the first request
+            # there's nothing we can do
+            pass
 
 class Message:
     '''
