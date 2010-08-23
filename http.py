@@ -111,6 +111,7 @@ def gather_messages(MessageClass, tcpdir):
     messages = [] # [MessageClass]
     pointer = 0
     while pointer < len(tcpdir.data):
+        curr_data = tcpdir.data[pointer:pointer+200]
         msg = MessageClass(tcpdir, pointer)
         messages.append(msg)
         pointer += msg.data_consumed
@@ -131,7 +132,8 @@ def parse_streams(request_stream, response_stream):
     try:
         requests = gather_messages(Request, request_stream)
         responses = gather_messages(Response, response_stream)
-    except dpkt.UnpackError:
+    except dpkt.UnpackError as e:
+        print 'failed to parse http: ', e
         return False, None, None
     else:
         return True, requests, responses
