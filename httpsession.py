@@ -30,6 +30,25 @@ class Entry:
         self.total_time = ms_from_timedelta(
             endedDateTime - self.startedDateTime # plus connection time, someday
         )
+    def json_repr(self):
+        '''
+        return a JSON serializable python object representation of self.
+        '''
+        return {
+            'page_ref': self.page_ref,
+            'startedDateTime': self.startedDateTime.isoformat(),
+            'time': self.total_time,
+            'request': {
+                'method': self.request.msg.method,
+                'url': self.request.msg.uri,
+                'httpVersion': self.request.msg.version
+            },
+            'response': {
+                'status': self.response.msg.status,
+                'statusText': self.response.msg.reason,
+                'httpVersion': self.response.msg.version,
+            }
+        }
 
 class UserAgentTracker:
     def __init__(self):
@@ -51,7 +70,7 @@ class UserAgentTracker:
         else:
             return 'too many'
 
-class HTTPSession:
+class HTTPSession(object):
     '''
     Represents all http traffic from within a pcap.
     
@@ -79,4 +98,23 @@ class HTTPSession:
             # parse basic data in the pair, add it to the list
             self.entries.append(Entry(msg.request, msg.response))
         # finish calculating data
-        self.user_agent = self.user_agents.dominant_user_agent()
+        self.user_agent = self.user_agents.dominant_user_agent()    
+    def json_repr(self):
+        '''
+        return a JSON serializable python object representation of self.
+        '''
+        return {
+            'log': {
+                'version' : '1.1',
+                'creator': {
+                    'name': 'pcap2har',
+                    'version': '0.1'
+                },
+                'browser': {
+                    'name': self.user_agent,
+                    'version': 'mumble'
+                },
+                'pages': [],
+                'entries': [entry.json_repr() for entry in self.entries]
+            }
+        }

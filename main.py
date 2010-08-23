@@ -6,7 +6,8 @@ import optparse
 import logging
 import sys
 import http
-import har
+import httpsession
+import json
 
 # get cmdline args/options
 parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
@@ -39,6 +40,11 @@ def combine_pairs(pairs, flow):
 pairs = reduce(combine_pairs, httpflows, [])
 
 # parse HAR stuff
-session = har.HTTPSession(pairs)
+session = httpsession.HTTPSession(pairs)
+
+d = session.json_repr()
+
+with open(outputfile, 'w') as f:
+    json.dump(d, f, indent=4)
 
 pass
