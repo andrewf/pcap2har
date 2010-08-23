@@ -87,7 +87,7 @@ class Direction:
         is assumed to be zero-based.
         '''
         if self.seq_start:
-            return byte + self.seq_start + 1
+            return byte + self.seq_start
         else:
             return byte + self.flow.first_packet.seq
 
