@@ -55,7 +55,7 @@ class Entry:
         '''
         return {
             'page_ref': self.page_ref,
-            'startedDateTime': self.startedDateTime.isoformat(),
+            'startedDateTime': self.startedDateTime.isoformat() + 'Z', # assume time is in UTC
             'time': self.total_time,
             'request': self.request,
             'response': self.response,
@@ -66,7 +66,8 @@ class Entry:
                 'send': self.time_sending,
                 'wait': self.time_waiting,
                 'receive': self.time_receiving
-            }
+            },
+            'cache': {},
         }
 
 class UserAgentTracker:
@@ -97,7 +98,7 @@ class UserAgentTracker:
 class HTTPSession(object):
     '''
     Represents all http traffic from within a pcap.
-    
+
     Members:
     * user_agent = most-used user-agent in the flow
     * referers = referers/page-loads
@@ -122,7 +123,7 @@ class HTTPSession(object):
             # parse basic data in the pair, add it to the list
             self.entries.append(Entry(msg.request, msg.response))
         # finish calculating data
-        self.user_agent = self.user_agents.dominant_user_agent()    
+        self.user_agent = self.user_agents.dominant_user_agent()
     def json_repr(self):
         '''
         return a JSON serializable python object representation of self.

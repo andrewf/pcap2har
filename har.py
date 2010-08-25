@@ -24,7 +24,10 @@ def HTTPRequestJsonRepr(self):
         'url': self.msg.uri,
         'httpVersion': self.msg.version,
         'cookies': [],
+        'queryString': [],
+        'headersSize': -1,
         'headers': header_json_repr(self.msg.headers),
+        'bodySize': len(self.msg.body),
     }
 http.Request.json_repr = HTTPRequestJsonRepr
 
@@ -34,7 +37,14 @@ def HTTPResponseJsonRepr(self):
         'statusText': self.msg.reason,
         'httpVersion': self.msg.version,
         'cookies': [],
-        'headers': header_json_repr(self.msg.headers)
+        'headersSize': -1,
+        'bodySize': len(self.msg.body),
+        'redirectURL': self.msg.headers['location'] if 'location' in self.msg.headers else '',
+        'headers': header_json_repr(self.msg.headers),
+        'content': {
+            'size': len(self.msg.body), # should really be uncompressed length
+            'mimeType': self.mimeType
+        },
     }
 http.Response.json_repr = HTTPResponseJsonRepr
 

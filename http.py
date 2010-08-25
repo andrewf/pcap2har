@@ -19,7 +19,7 @@ class HTTPError(Exception):
 class HTTPFlow:
     '''
     Parses a TCPFlow into HTTP request/response pairs. Or not, depending on the
-    integrity of the flow. After __init__, self.pairs, 
+    integrity of the flow. After __init__, self.pairs,
     '''
     def __init__(self, tcpflow):
         # try parsing it with forward as request dir
@@ -90,6 +90,11 @@ class Response(Message):
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
+        # get mime type
+        if 'content-type' in self.msg.headers:
+            self.mimeType= self.msg.headers['content-type']
+        else:
+            self.mimeType = ''
 
 class MessagePair:
     '''
