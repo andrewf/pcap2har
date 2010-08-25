@@ -1,26 +1,50 @@
+import http
+import json
+
 '''
-Parses a list of HTTPFlows into data suitable for writing to a HAR file.
+functions and classes for generating HAR data from parsed http data
 '''
 
-class Page:
-    def __init__(self, title, startedDateTime):
-        self.title = title
-        self.startedDateTime = startedDateTime
+# json_repr for HTTP header dicts
+def header_json_repr(d):
+    return [
+        {
+            'name': k,
+            'value': v
+        } for k, v in d.iteritems()
+    ]
 
-class Entry:
-    def __init__(self, request, response):
-        self.request = request
-        self.response = response
-        self.total_time = (response.end_time - request.start_time) + startup_time
-
-def extract_data(httpdata):
+# add json_repr methods to http classes
+def HTTPRequestJsonRepr(self):
     '''
-    Extracts http data from the httpdata and converts it into a python dict
-    suitable for writing straight out as a HAR.
-
-    Args:
-    httpflows = [http.MessagePair]
-
-    Returns:
-    {} = HAR data
+    self = http.Request
     '''
+    return {
+        'method': self.msg.method,
+        'url': self.msg.uri,
+        'httpVersion': self.msg.version,
+        'cookies': [],
+        'headers': header_json_repr(self.msg.headers),
+    }
+http.Request.json_repr = HTTPRequestJsonRepr
+
+def HTTPResponseJsonRepr(self):
+    return {
+        'status': self.msg.status,
+        'statusText': self.msg.reason,
+        'httpVersion': self.msg.version,
+        'cookies': [],
+        'headers': header_json_repr(self.msg.headers)
+    }
+http.Response.json_repr = HTTPResponseJsonRepr
+
+# custom json encoder
+class JsonReprEncoder(json.JSONEncoder):
+    '''
+    Custom Json Encoder that attempts to call json_repr on every object it
+    encounters.
+    '''
+    def default(self, obj):
+        if hasattr(obj, 'json_repr'):
+            return obj.json_repr()
+        return json.JSONEncoder.default(self, obj) # should call super instead?

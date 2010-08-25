@@ -22,6 +22,22 @@ def friendly_socket(sock):
 def friendly_data(str):
     return `str`
 
+def ms_from_timedelta(td):
+    '''
+    gets the number of ms in td, which is datetime.timedelta.
+    Modified from here:
+    http://docs.python.org/library/datetime.html#datetime.timedelta, near the
+    end of the section.
+    '''
+    return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**3
+
+def ms_from_dpkt_time(td):
+    '''
+    Get milliseconds from a dpkt timestamp. This should probably only really be
+    done on a number gotten from subtracting two dpkt timestamps.
+    '''
+    return int(td * 1000) # um, I guess
+
 class ModifiedReader(object):
     """
     A copy of the dpkt pcap Reader. The only change is that the iterator

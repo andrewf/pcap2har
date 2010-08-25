@@ -6,6 +6,9 @@ import optparse
 import logging
 import sys
 import http
+import httpsession
+import har
+import json
 
 # get cmdline args/options
 parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
@@ -31,5 +34,16 @@ for f in flows.flowdict.itervalues():
         httpflows.append(http.HTTPFlow(f))
     except http.HTTPError as e:
         pass
+
+# put all message pairs in one list
+def combine_pairs(pairs, flow):
+    return pairs + flow.pairs
+pairs = reduce(combine_pairs, httpflows, [])
+
+# parse HAR stuff
+session = httpsession.HTTPSession(pairs)
+
+with open(outputfile, 'w') as f:
+    json.dump(session, f, cls=har.JsonReprEncoder, indent=2)
 
 pass
