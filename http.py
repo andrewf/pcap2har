@@ -86,12 +86,12 @@ def gather_messages(MessageClass, tcpdir):
     '''
     Attempts to construct a series of MessageClass objects from the data. The
     basic idea comes from pyper's function, HTTPFlow.analyze.gather_messages.
-    Args
+    Args:
     MessageClass = class, Request or Response
     tcpdir = TCPDirection, from which will be extracted the data
     '''
     messages = [] # [MessageClass]
-    pointer = 0
+    pointer = 0 # starting index of data that MessageClass should look at
     while pointer < len(tcpdir.data):
         msg = MessageClass(tcpdir, pointer)
         messages.append(msg)
