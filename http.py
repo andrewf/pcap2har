@@ -1,5 +1,5 @@
 import dpkt
-from querystring import QueryStringParser
+import urlparse
 
 def find_index(f, seq):
     '''
@@ -85,9 +85,8 @@ class Request(Message):
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
         # get query string. its the URL after the first '?'
-        params_start = self.msg.uri.find('?')
-        query_string = self.msg.uri[ params_start+1 :] if params_start != -1 else ''
-        self.query = QueryStringParser(query_string)
+        parse_results = urlparse.urlparse(self.msg.uri)
+        self.query = urlparse.parse_qs(parse_results.query)
 
 class Response(Message):
     '''
