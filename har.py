@@ -44,6 +44,13 @@ def HTTPRequestJsonRepr(self):
 http.Request.json_repr = HTTPRequestJsonRepr
 
 def HTTPResponseJsonRepr(self):
+    content =  {
+        'size': len(self.body),
+        'compression': len(self.body) - len(self.raw_body),
+        'mimeType': self.mimeType,
+    }
+    if self.istext:
+        content['text'] = self.body.decode('iso-8859-1').encode('utf8') # must transcode to utf8
     return {
         'status': self.msg.status,
         'statusText': self.msg.reason,
@@ -53,10 +60,7 @@ def HTTPResponseJsonRepr(self):
         'bodySize': len(self.msg.body),
         'redirectURL': self.msg.headers['location'] if 'location' in self.msg.headers else '',
         'headers': header_json_repr(self.msg.headers),
-        'content': {
-            'size': len(self.msg.body), # should really be uncompressed length
-            'mimeType': self.mimeType
-        },
+        'content': content,
     }
 http.Response.json_repr = HTTPResponseJsonRepr
 

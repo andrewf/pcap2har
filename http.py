@@ -1,5 +1,9 @@
 import dpkt
 import urlparse
+import gzip
+import zlib
+import cStringIO
+import re
 
 def find_index(f, seq):
     '''
@@ -13,7 +17,13 @@ def find_index(f, seq):
 
 class HTTPError(Exception):
     '''
-    Thrown when HTTP cannot be parsed from the given data.
+    Raised when HTTP cannot be parsed from the given data.
+    '''
+    pass
+
+class DecodingError(HTTPError):
+    '''
+    Raised when encoded HTTP data cannot be decompressed/decoded/whatever.
     '''
     pass
 
@@ -68,6 +78,7 @@ class Message:
     * seq_end: first sequence number past Message's data (slice-style indices)
     * ts_start: when Message started arriving (dpkt timestamp)
     * ts_end: when Message had fully arrived (dpkt timestamp)
+    * body_raw: body before compression is taken into account
     '''
     def __init__(self, tcpdir, pointer, msgclass):
         '''
@@ -86,6 +97,8 @@ class Message:
         # calculate arrival_times
         self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
         self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        # get raw body
+        self.raw_body = self.msg.body
 
 class Request(Message):
     '''
@@ -106,11 +119,17 @@ class Request(Message):
         self.url, frag = urlparse.urldefrag(self.fullurl)
         self.query = urlparse.parse_qs(uri.query)
 
+# RE's for use on mime types
+mimetype_text = re.compile('text/.+')
+mimetype_image = re.compile('image/.+')
+
 class Response(Message):
     '''
     HTTP response.
     Members:
     * mimeType: string mime type of returned data
+    * body: http decoded body data
+    * compression: string, compression type
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
@@ -119,6 +138,54 @@ class Response(Message):
             self.mimeType= self.msg.headers['content-type']
         else:
             self.mimeType = ''
+        self.handle_compression()
+        # determine whether this is text
+        self.istext = bool(mimetype_text.match(self.mimeType))
+    def handle_compression(self):
+        '''
+        Sets self.body to the http decoded response data. Sets compression to
+        the name of the compresson type.
+        '''
+        # if content-encoding is found
+        if 'content-encoding' in self.msg.headers:
+            encoding = self.msg.headers['content-encoding'].lower()
+            self.compression = encoding
+            # handle gzip
+            if encoding == 'gzip' or encoding == 'x-gzip':
+                try:
+                    gzipfile = gzip.GzipFile(
+                        fileobj = cStringIO.StringIO(self.raw_body)
+                    )
+                    self.body = gzipfile.read()
+                except zlib.error:
+                    raise DecodingError('zlib failed to gunzip HTTP data')
+                except:
+                    # who knows what else it might raise
+                    raise DecodingError("failed to gunzip HTTP data, don't know why")
+            # handle deflate
+            elif encoding == 'deflate':
+                try:
+                    # NOTE: wbits = -15 is a undocumented feature in python (it's
+                    # documented in zlib) that gets rid of the header so we can
+                    # do raw deflate. See: http://bugs.python.org/issue5784
+                    self.body = zlib.decompress(self.raw_body, -15)
+                except zlib.error:
+                    raise DecodingError('zlib failed to undeflate HTTP data')
+            elif encoding == 'compress' or encoding == 'x-compress':
+                # apparently nobody uses this, so basically just ignore it
+                self.body = self.raw_body
+            elif encoding == 'identity':
+                # no compression
+                self.body = self.raw_body
+            else:
+                # I'm pretty sure the above are the only allowed encoding types
+                # see RFC 2616 sec 3.5 (http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.5)
+                raise DecodingError('unknown content-encoding token: ' + encoding)
+        else:
+            # no compression
+            self.compression = 'identity'
+            self.body = self.raw_body
+                
 
 class MessagePair:
     '''
