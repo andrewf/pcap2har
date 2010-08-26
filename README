@@ -1,8 +1,12 @@
 pcap2har: converts .pcap network capture files to HTTP Archive files.
 
-Well, actually, it doesn't do that yet. This project is still under
-construction. We will be slowly working up from parsing .pcap's, extracting
-TCP flows from them, and interpreting those to generate a HAR file.
+The HAR format is still not completely supported, but the main parts are there
+and features are being added.
+
+To run the program, run main.py with two arguments: the name of the capture
+file, and the HAR output filename. For example:
+
+./main.py my.pcap my_pcap.har
 
 The HTTP Archive (HAR) file format specification is here:
 http://groups.google.com/group/http-archive-specification/web/har-1-1-spec?hl=en
