@@ -14,6 +14,18 @@ def header_json_repr(d):
         } for k, v in d.iteritems()
     ]
 
+def query_json_repr(d):
+    # d = {string: [string]}
+    # we need to print all values of the list
+    output = []
+    for k, l in d.iteritems():
+        for v in l:
+            output.append({
+                'name': k,
+                'value': v
+            })
+    return output
+
 # add json_repr methods to http classes
 def HTTPRequestJsonRepr(self):
     '''
@@ -24,10 +36,7 @@ def HTTPRequestJsonRepr(self):
         'url': self.msg.uri,
         'httpVersion': self.msg.version,
         'cookies': [],
-        'queryString': [
-            {'name': n, 'value': v}
-            for n, v in self.query.values.iteritems()
-        ],
+        'queryString': query_json_repr(self.query),
         'headersSize': -1,
         'headers': header_json_repr(self.msg.headers),
         'bodySize': len(self.msg.body),

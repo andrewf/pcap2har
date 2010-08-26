@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+'''
+Main program that converts pcaps to HAR's.
+'''
+
 import pcap
 import os
 import optparse

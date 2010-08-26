@@ -1,11 +1,15 @@
 '''
-Parses a list of HTTPFlows into data suitable for writing to a HAR file.
+Objects for parsing a list of HTTPFlows into data suitable for writing to a
+HAR file.
 '''
 
 from datetime import datetime
 from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 
 class Page:
+    '''
+    Represents a page entry in the HAR. 
+    '''
     def __init__(self, title, startedDateTime):
         self.title = title
         self.startedDateTime = startedDateTime # python datetime
@@ -71,37 +75,41 @@ class Entry:
         }
 
 class UserAgentTracker:
+    '''
+    Keeps track of how many uses each user-agent header receives, and provides
+    a function for finding the most-used one.
+    '''
     def __init__(self):
         self.data = {} # {user-agent string: number of uses}
-    def add(self, string):
+    def add(self, ua_string):
         '''
-        either increments the use-count, or creates a new entry
+        Either increments the use-count for the user-agent string, or creates a
+        new entry. Call this for each user-agent header encountered.
         '''
-        if string in self.data:
-            self.data[string] += 1
+        if ua_string in self.data:
+            self.data[ua_string] += 1
         else:
-            self.data[string] = 1
+            self.data[ua_string] = 1
     def dominant_user_agent(self):
         '''
-        The agent string with the most uses
+        Returns the agent string with the most uses.
         '''
         if not len(self.data):
             return None
         elif len(self.data) == 1:
             return self.data.keys()[0]
         else:
-            # max returns first value of tuple produced when iterating through
-            # dict, in this case, the user-agent string, even though the key
-            # function has access to the full tuple
-            return max(self.data, key=lambda v: v[0])
+            # return the string from the key-value pair with the biggest value
+            return max(self.data.iteritems(), key=lambda v: v[1])[0]
 
 class HTTPSession(object):
     '''
     Represents all http traffic from within a pcap.
 
     Members:
+    * user_agents = UserAgentTracker
     * user_agent = most-used user-agent in the flow
-    * referers = referers/page-loads
+    * entries = [Entry], all http request/response pairs
     '''
     def __init__(self, messages):
         '''

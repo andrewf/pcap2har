@@ -55,8 +55,8 @@ class Chunk:
     def inner_merge(self, newseq, newdata, callback):
         '''
         Internal implementation function for merging, very similar in interface
-        to merge_pkt, but more general. It is used for merging in both packets
-        and other Chunk's
+        to merge_pkt, but concentrates on the nitty-gritty logic of merging, as
+        opposed to the high-level logic of merge().
 
         Args:
         newseq = (seq_begin, seq_end)

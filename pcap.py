@@ -8,17 +8,25 @@ import shutil
 import tcp
 
 class TCPFlowAccumulator:
-    '''Takes a list of TCP packets and organizes them into distinct
+    '''
+    Takes a list of TCP packets and organizes them into distinct
     connections, or flows. It does this by organizing packets into a
-    dictionary indexed by their socket, or the tuple
-    ((srcip, sport), (dstip,dport)), possibly the other way around.'''
+    dictionary indexed by their socket (the tuple
+    ((srcip, sport), (dstip,dport)), possibly the other way around).
+    
+    Members:
+    flowdict = {socket: tcp.Flow}, the list of tcp.Flow's organized by socket
+    '''
     def __init__(self, pcap_reader):
         '''
-        scans the pcap_reader for TCP packets, and incorporates them
-        into its dictionary. pcap_reader is expected to be a
-        pcaputil.ModifiedReader
+        scans the pcap_reader for TCP packets, and adds them to the tcp.Flow
+        they belong to, based on their socket
+        
+        Args:
+        pcap_reader = pcaputil.ModifiedReader
+        errors = list of errors encountered during parsing pcap.
         '''
-        self.flowdict = {} # {socket: tcp.Flow}
+        self.flowdict = {}
         self.errors = []
         debug_pkt_count = 0
         try:
@@ -51,7 +59,9 @@ class TCPFlowAccumulator:
         map(tcp.Flow.finish, self.flowdict.itervalues())
 
     def process_packet(self, pkt):
-        '''adds the tcp packet to flowdict. pkt is a TCPPacket'''
+        '''
+        adds the tcp packet to flowdict. pkt is a TCPPacket
+        '''
         #try both orderings of src/dst socket components
         #otherwise, start a new list for that socket
         src, dst = pkt.socket
@@ -69,13 +79,16 @@ class TCPFlowAccumulator:
             newflow.add(pkt)
             self.flowdict[(src,dst)] = newflow
     def flows(self):
-        '''lists available flows by socket'''
+        '''
+        lists available flows by socket
+        '''
         return [friendly_socket(s) for s in self.flowdict.keys()]
 
     def get_flow(self, **kwargs):
         '''
         Pick out a flow by criteria determined by kwargs. Return the first one
-        that matches, along with its socket. Meant for console use.
+        that matches, along with its socket. If none match, return None. Meant
+        for console use.
 
         Keyword argument values:
         socket = pick flow according to socket
@@ -119,9 +132,11 @@ def TCPFlowsFromFile(filename):
     return TCPFlowAccumulator(reader)
 
 def verify_file(filename):
-    '''attempts to construct packets from all the packets in the file, to
+    '''
+    attempts to construct packets from all the packets in the file, to
     verify their validity, or dpkt's ability to interpret them. Intended to be
-    used from the console.'''
+    used from the console.
+    '''
     f = open(filename,'rb')
     reader = dpkt.pcap.Reader(f)
     i = 0

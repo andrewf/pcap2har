@@ -1,5 +1,7 @@
-'''Defines functions for comparing and processing TCP sequence numbers, taking
-into account their limited number space.'''
+'''
+Defines functions for comparing and processing TCP sequence numbers, taking
+into account their limited number space.
+'''
 
 def twos_comp(x):
     return (~x)+1
@@ -8,9 +10,11 @@ numberspace = 2**32 # seq numbers are up to but not including this
 halfspace = numberspace / 2
 
 def wrap(x):
-    '''emulates the cast to int used in the C tcp seq # subtraction algo:
+    '''
+    emulates the cast to int used in the C tcp seq # subtraction algo:
     (int)( (a) - (b) ). Basically, if a number's absolute value is greater
-    than half the (unsigned) number space, it needs to be wrapped'''
+    than half the (unsigned) number space, it needs to be wrapped.
+    '''
     # if abs(x) > numberspace / 2, its value must be reduced by numberspace/2,
     # and its sign must be flipped
     if x > halfspace:

@@ -20,9 +20,16 @@ class HTTPError(Exception):
 class HTTPFlow:
     '''
     Parses a TCPFlow into HTTP request/response pairs. Or not, depending on the
-    integrity of the flow. After __init__, self.pairs,
+    integrity of the flow. After __init__, self.pairs contains a list of
+    MessagePair's. Requests are paired up with the first response that occured
+    after them which has not already been paired with a previous request. Responses
+    that don't match up with a request are ignored. Requests with no response are
+    paired with None.
     '''
     def __init__(self, tcpflow):
+        '''
+        tcpflow = tcp.Flow
+        '''
         # try parsing it with forward as request dir
         success, requests, responses = parse_streams(tcpflow.fwd, tcpflow.rev)
         if not success:
@@ -57,13 +64,15 @@ class Message:
 
     * msg: underlying dpkt class
     * data_consumed: how many bytes of input were consumed
-    * start_time
-    * end_time
+    * seq_start: first sequence number of the Message's data in the tcpdir
+    * seq_end: first sequence number past Message's data (slice-style indices)
+    * ts_start: when Message started arriving (dpkt timestamp)
+    * ts_end: when Message had fully arrived (dpkt timestamp)
     '''
     def __init__(self, tcpdir, pointer, msgclass):
         '''
         Args:
-        tcpdir = TCPDirection
+        tcpdir = tcp.Direction
         pointer = position within tcpdir.data to start parsing from. byte index
         msgclass = dpkt.http.Request/Response
         '''
@@ -80,7 +89,9 @@ class Message:
 
 class Request(Message):
     '''
-    HTTP request.
+    HTTP request. Parses higher-level info out of dpkt.http.Request
+    Members:
+    * query: Query string name-value pairs. {string: [string]}
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
@@ -91,6 +102,8 @@ class Request(Message):
 class Response(Message):
     '''
     HTTP response.
+    Members:
+    * mimeType: string mime type of returned data
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Response)

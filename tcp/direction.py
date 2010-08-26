@@ -2,16 +2,38 @@ from sortedcollection import SortedCollection
 import tcp
 
 class Direction:
+    '''
+    Represents data moving in one direction in a TCP flow.
+    
+    Members:
+    * chunks = [tcp.Chunk], sorted by seq_start
+    * flow = tcp.Flow, the flow to which the direction belongs
+    * seq_start = the sequence number at which the data starts, after finish()
+    * arrival_data = [(seq_num, pkt)] or SortedCollection
+    * final_arrival_data = SortedCollection, after calculate_final_arrivals()
+    '''
     def __init__(self, flow):
-        self.arrival_data = [] #[(seq_num, pkt)] # records when a given seq number first arrived
-        self.final_arrival_data = None # or [(seq_num, dpkt_time)]
+        '''
+        Sets things up for adding packets.
+        
+        Args:
+        flow = tcp.Flow
+        '''
+        self.arrival_data = []
+        self.final_arrival_data = None #
         self.closed_cleanly = False # until proven true
-        self.chunks = [] # [TCPChunk] sorted by seq_start
-        self.flow = flow # the parent TCPFlow. we need info from it
+        self.chunks = []
+        self.flow = flow
         self.seq_start= None # the seq number of the first byte of data, valid after finish() if self.data is valid
     def add(self, pkt):
         '''
-        merge in the packet
+        Merge the packet into the first chunk it overlaps with. If data was
+        added to the end of a chunk, attempts to merge the next chunk (if there
+        is one). This way, it is ensured that everything is as fully merged as
+        it can be with the current data.
+        
+        Args:
+        pkt = tcp.Packet
         '''
         # discard packets with no payload. we don't care about them here
         if pkt.data == '':
@@ -39,8 +61,11 @@ class Direction:
 
     def finish(self):
         '''
-        notifies the direction that there are no more packets coming.
+        Notifies the direction that there are no more packets coming. This means
+        that self.data can be decided upon, and arrival_data can be converted to
+        a SortedCollection for querying
         '''
+        # set data to the data from the first chunk, if there is one
         if self.chunks:
             self.data = self.chunks[0].data
             self.seq_start = self.chunks[0].seq_start
@@ -52,7 +77,7 @@ class Direction:
         make self.final_arrival_data a SortedCollection. Final arrival
         for a sequence number is when that sequence number of data and all the
         data before it have arrived, that is, when the data is usable by the
-        application.
+        application. Must be called after self.finish().
         '''
         self.final_arrival_data = []
         peak_time = 0.0
@@ -65,7 +90,7 @@ class Direction:
     def new_chunk(self, pkt):
         '''
         creates a new tcp.Chunk for the pkt to live in. Only called if an attempt
-        has been made to merge the packet with all existing chunks
+        has been made to merge the packet with all existing chunks.
         '''
         chunk = tcp.Chunk()
         chunk.merge(pkt, self.create_merge_callback(pkt))
@@ -102,8 +127,8 @@ class Direction:
     def seq_final_arrival(self, seq_num):
         '''
         Returns the time at which the seq number had fully arrived. Will
-        calculate final_arrival_data if it has not been already. Still requires
-        self.arrival_data to be sorted by seq number, most likely a SortedCollection.
+        calculate final_arrival_data if it has not been already. Only callable
+        after self.finish()
         '''
         if not self.final_arrival_data:
             self.calculate_final_arrivals()
