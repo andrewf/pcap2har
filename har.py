@@ -24,7 +24,10 @@ def HTTPRequestJsonRepr(self):
         'url': self.msg.uri,
         'httpVersion': self.msg.version,
         'cookies': [],
-        'queryString': [],
+        'queryString': [
+            {'name': n, 'value': v}
+            for n, v in self.query.values.iteritems()
+        ],
         'headersSize': -1,
         'headers': header_json_repr(self.msg.headers),
         'bodySize': len(self.msg.body),
