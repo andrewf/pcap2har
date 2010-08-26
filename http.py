@@ -92,12 +92,19 @@ class Request(Message):
     HTTP request. Parses higher-level info out of dpkt.http.Request
     Members:
     * query: Query string name-value pairs. {string: [string]}
+    * host: hostname of server.
+    * fullurl: Full URL, with all components.
+    * url: Full URL, but without fragments. (that's what HAR wants)
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
         # get query string. its the URL after the first '?'
-        parse_results = urlparse.urlparse(self.msg.uri)
-        self.query = urlparse.parse_qs(parse_results.query)
+        uri = urlparse.urlparse(self.msg.uri)
+        self.host = self.msg.headers['host'] if 'host' in self.msg.headers else ''
+        fullurl = urlparse.ParseResult('http', self.host, uri.path, uri.params, uri.query, uri.fragment)
+        self.fullurl = fullurl.geturl()
+        self.url, frag = urlparse.urldefrag(self.fullurl)
+        self.query = urlparse.parse_qs(uri.query)
 
 class Response(Message):
     '''

@@ -33,7 +33,7 @@ def HTTPRequestJsonRepr(self):
     '''
     return {
         'method': self.msg.method,
-        'url': self.msg.uri,
+        'url': self.url,
         'httpVersion': self.msg.version,
         'cookies': [],
         'queryString': query_json_repr(self.query),
