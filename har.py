@@ -49,8 +49,8 @@ def HTTPResponseJsonRepr(self):
         'compression': len(self.body) - len(self.raw_body),
         'mimeType': self.mimeType,
     }
-    if self.istext:
-        content['text'] = self.body.decode('iso-8859-1').encode('utf8') # must transcode to utf8
+    if self.text:
+        content['text'] = self.text.encode('utf8') # must transcode to utf8
     return {
         'status': self.msg.status,
         'statusText': self.msg.reason,
