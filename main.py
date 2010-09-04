@@ -35,8 +35,8 @@ flows = pcap.TCPFlowsFromFile(inputfile)
 httpflows = []
 for f in flows.flowdict.itervalues():
     try:
-        httpflows.append(http.HTTPFlow(f))
-    except http.HTTPError as e:
+        httpflows.append(http.Flow(f))
+    except http.Error as e:
         pass
 
 # put all message pairs in one list
