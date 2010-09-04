@@ -15,14 +15,13 @@ class Flow:
     * socket = ((srcip, sport), (dstip, dport)). Used for checking the direction
     of packets. Taken from SYN or first packet.
     * packets = list of tcp.Packet's, all packets in the flow
-    * first_packet
     * handshake = None or (syn, synack, ack) or False. None while a handshake is
     still being searched for, False when we've given up on finding it.
     '''
     def __init__(self):
         self.fwd = Direction(self)
         self.rev = Direction(self)
-        self.handshake = None # don't bother for now
+        self.handshake = None
         self.socket = None
         self.packets = []
     def add(self, pkt):
@@ -53,14 +52,15 @@ class Flow:
                 self.flush_packets()
     def flush_packets(self):
         '''
-        Flush packet buffer by merging the packets into either fwd or rev.
+        Flush packet buffer by merging all packets into either fwd or rev.
         '''
         for p in self.packets:
             self.merge_pkt(p)
 
     def merge_pkt(self, pkt):
         '''
-        Merges the packet into either the forward or reverse stream.
+        Merges the packet into either the forward or reverse stream, depending
+        on its direction.
         '''
         if self.samedir(pkt):
             self.fwd.add(pkt)
@@ -68,7 +68,9 @@ class Flow:
             self.rev.add(pkt)
     def finish(self):
         '''
-        Notifies the flow that there are no more packets.
+        Notifies the flow that there are no more packets. This finalizes the
+        handshake and socket, flushes any built-up packets, and calls finish on
+        fwd and rev.
         '''
         # handle the case where no handshake was detected
         if self.handshake is None:
@@ -81,11 +83,10 @@ class Flow:
         '''
         returns whether the passed packet is in the same direction as the
         assumed direction of the flow, which is either that of the SYN or the
-        first packet.
-        Assumes self.handshake is not None
+        first packet. Raises RuntimeError if self.socket is None
         '''
         if not self.socket:
-            raise RuntimeError("called TCPFlow.samedir before direction is determined")
+            raise RuntimeError("called tcp.Flow.samedir before direction is determined")
         src, dst = pkt.socket
         if self.socket == (src, dst):
             return True

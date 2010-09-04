@@ -2,10 +2,26 @@ import dpkt
 from pcaputil import *
 
 class Packet(object):
-    '''copied from pyper, with additions. represents a TCP packet. contains
-    socket, timestamp, and data'''
+    '''
+    Represents a TCP packet. Copied from pyper, with additions. contains
+    socket, timestamp, and data
+    
+    Members:
+    ts = dpkt timestamp
+    buf = original data from which eth was constructed
+    eth = dpkt.ethernet.Ethernet. Original ethernet frame.
+    ip = dpkt.ip.IP. Original IP packet.
+    tcp = dpkt.tcp.TCP.
+    socket = standard socket tuple: ((srcip, sport), (dstip, dport))
+    data = data from TCP segment
+    seq, seq_start = sequence number
+    seq_end = first sequence number past this packets data (past the end slice
+        index style)
+    '''
     def __init__(self, ts, buf, eth, ip, tcp):
-        '''ts = timestamp
+        '''
+        Args:
+        ts = timestamp
         buf = original packet data
         eth = dpkt.ethernet.Ethernet that the packet came from
         ip  = dpkt.ip.IP that the packet came from
@@ -21,7 +37,6 @@ class Packet(object):
         self.seq = tcp.seq
         self.ack = tcp.ack
         self.flags = tcp.flags
-
         self.seq_start = self.tcp.seq
         self.seq_end = self.tcp.seq + len(self.tcp.data) # - 1
         self.rtt = None

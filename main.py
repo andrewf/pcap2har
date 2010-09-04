@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+'''
+Main program that converts pcaps to HAR's.
+'''
+
 import pcap
 import os
 import optparse
@@ -44,6 +48,6 @@ pairs = reduce(combine_pairs, httpflows, [])
 session = httpsession.HTTPSession(pairs)
 
 with open(outputfile, 'w') as f:
-    json.dump(session, f, cls=har.JsonReprEncoder, indent=2)
+    json.dump(session, f, cls=har.JsonReprEncoder, indent=2, encoding='utf8')
 
 pass

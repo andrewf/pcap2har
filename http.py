@@ -1,4 +1,17 @@
 import dpkt
+import urlparse
+import gzip
+import zlib
+import cStringIO
+import re
+from mediatype import MediaType
+
+# try to import UnicodeDammit from BeautifulSoup
+# otherwise, set the name to None
+try:
+    from BeautifulSoup import UnicodeDammit
+except ImportError:
+    UnicodeDammit = None
 
 def find_index(f, seq):
     '''
@@ -12,16 +25,29 @@ def find_index(f, seq):
 
 class HTTPError(Exception):
     '''
-    Thrown when HTTP cannot be parsed from the given data.
+    Raised when HTTP cannot be parsed from the given data.
+    '''
+    pass
+
+class DecodingError(HTTPError):
+    '''
+    Raised when encoded HTTP data cannot be decompressed/decoded/whatever.
     '''
     pass
 
 class HTTPFlow:
     '''
     Parses a TCPFlow into HTTP request/response pairs. Or not, depending on the
-    integrity of the flow. After __init__, self.pairs,
+    integrity of the flow. After __init__, self.pairs contains a list of
+    MessagePair's. Requests are paired up with the first response that occured
+    after them which has not already been paired with a previous request. Responses
+    that don't match up with a request are ignored. Requests with no response are
+    paired with None.
     '''
     def __init__(self, tcpflow):
+        '''
+        tcpflow = tcp.Flow
+        '''
         # try parsing it with forward as request dir
         success, requests, responses = parse_streams(tcpflow.fwd, tcpflow.rev)
         if not success:
@@ -56,13 +82,16 @@ class Message:
 
     * msg: underlying dpkt class
     * data_consumed: how many bytes of input were consumed
-    * start_time
-    * end_time
+    * seq_start: first sequence number of the Message's data in the tcpdir
+    * seq_end: first sequence number past Message's data (slice-style indices)
+    * ts_start: when Message started arriving (dpkt timestamp)
+    * ts_end: when Message had fully arrived (dpkt timestamp)
+    * body_raw: body before compression is taken into account
     '''
     def __init__(self, tcpdir, pointer, msgclass):
         '''
         Args:
-        tcpdir = TCPDirection
+        tcpdir = tcp.Direction
         pointer = position within tcpdir.data to start parsing from. byte index
         msgclass = dpkt.http.Request/Response
         '''
@@ -76,25 +105,147 @@ class Message:
         # calculate arrival_times
         self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
         self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        # get raw body
+        self.raw_body = self.msg.body
 
 class Request(Message):
     '''
-    HTTP request.
+    HTTP request. Parses higher-level info out of dpkt.http.Request
+    Members:
+    * query: Query string name-value pairs. {string: [string]}
+    * host: hostname of server.
+    * fullurl: Full URL, with all components.
+    * url: Full URL, but without fragments. (that's what HAR wants)
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
+        # get query string. its the URL after the first '?'
+        uri = urlparse.urlparse(self.msg.uri)
+        self.host = self.msg.headers['host'] if 'host' in self.msg.headers else ''
+        fullurl = urlparse.ParseResult('http', self.host, uri.path, uri.params, uri.query, uri.fragment)
+        self.fullurl = fullurl.geturl()
+        self.url, frag = urlparse.urldefrag(self.fullurl)
+        self.query = urlparse.parse_qs(uri.query)
 
 class Response(Message):
     '''
     HTTP response.
+    Members:
+    * mediaType: mediatype.MediaType, constructed from content-type
+    * mimeType: string mime type of returned data
+    * body: http decoded body data, otherwise unmodified
+    * body text, unicoded if possible, or None if the body is not text
+    * compression: string, compression type
+    * original_encoding: string, original text encoding/charset/whatever
     '''
     def __init__(self, tcpdir, pointer):
         Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
+        # uncompress body if necessary
+        self.handle_compression()
         # get mime type
         if 'content-type' in self.msg.headers:
-            self.mimeType= self.msg.headers['content-type']
+            self.mediaType = MediaType(self.msg.headers['content-type'])
+            self.mimeType = self.mediaType.mimeType()
         else:
+            self.mediaType = None
             self.mimeType = ''
+        # try to get out unicode
+        self.handle_text()
+    def handle_compression(self):
+        '''
+        Sets self.body to the http decoded response data. Sets compression to
+        the name of the compresson type.
+        '''
+        # if content-encoding is found
+        if 'content-encoding' in self.msg.headers:
+            encoding = self.msg.headers['content-encoding'].lower()
+            self.compression = encoding
+            # handle gzip
+            if encoding == 'gzip' or encoding == 'x-gzip':
+                try:
+                    gzipfile = gzip.GzipFile(
+                        fileobj = cStringIO.StringIO(self.raw_body)
+                    )
+                    self.body = gzipfile.read()
+                except zlib.error:
+                    raise DecodingError('zlib failed to gunzip HTTP data')
+                except:
+                    # who knows what else it might raise
+                    raise DecodingError("failed to gunzip HTTP data, don't know why")
+            # handle deflate
+            elif encoding == 'deflate':
+                try:
+                    # NOTE: wbits = -15 is a undocumented feature in python (it's
+                    # documented in zlib) that gets rid of the header so we can
+                    # do raw deflate. See: http://bugs.python.org/issue5784
+                    self.body = zlib.decompress(self.raw_body, -15)
+                except zlib.error:
+                    raise DecodingError('zlib failed to undeflate HTTP data')
+            elif encoding == 'compress' or encoding == 'x-compress':
+                # apparently nobody uses this, so basically just ignore it
+                self.body = self.raw_body
+            elif encoding == 'identity':
+                # no compression
+                self.body = self.raw_body
+            else:
+                # I'm pretty sure the above are the only allowed encoding types
+                # see RFC 2616 sec 3.5 (http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.5)
+                raise DecodingError('unknown content-encoding token: ' + encoding)
+        else:
+            # no compression
+            self.compression = 'identity'
+            self.body = self.raw_body
+
+    def handle_text(self):
+        '''
+        Takes care of converting body text to unicode, if its text at all.
+        Sets self.original_encoding to original char encoding, and converts body
+        to unicode if possible. Must come after handle_compression, and after
+        self.mediaType is valid.
+        '''
+        # if the body is text
+        if self.mediaType.type == 'text' or \
+                (self.mediaType.type == 'application' and 'xml' in self.mediaType.subtype):
+            # if there was a charset parameter in HTTP header, store it
+            if 'charset' in self.mediaType.params:
+                override_encodings = [self.mediaType.params['charset']]
+            else:
+                override_encodings = []
+            # if there even is data (otherwise, dammit.originalEncoding might be None)
+            if self.body != '':
+                if UnicodeDammit:
+                    # honestly, I don't mind not abiding by RFC 2023. UnicodeDammit just
+                    # does what makes sense, and if the content is remotely standards-
+                    # compliant, it will do the right thing.
+                    dammit = UnicodeDammit(self.body, override_encodings)
+                    # if unicode was found
+                    if dammit.unicode:
+                        self.text = dammit.unicode
+                        self.originalEncoding = dammit.originalEncoding
+                    else:
+                        # unicode could not be decoded, at all
+                        # HAR can't write data, but body might still be useful as-is
+                        pass
+                else:
+                    # try the braindead version, just guess content-type or utf-8
+                    u = None
+                    # try our list of encodings + utf8 with strict errors
+                    for e in override_encodings + ['utf8', 'iso-8859-1']:
+                        try:
+                            u = self.body.decode(e, 'strict')
+                            self.originalEncoding = e
+                            break # if ^^ didn't throw, we're done
+                        except UnicodeError:
+                            pass
+                    # if none of those worked, try utf8 with 'replace' error mode
+                    if not u:
+                        # unicode has failed
+                        u = self.body.decode('utf8', 'replace')
+                        self.originalEncoding = None # ???
+                    self.text = u or None
+        else:
+            # body is not text
+            self.text = None
 
 class MessagePair:
     '''

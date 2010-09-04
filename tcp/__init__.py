@@ -1,3 +1,7 @@
+'''
+Objects for parsing TCP streams and packets.
+'''
+
 import dpkt
 
 # make tcp.Flow, tcp.Packet, etc. valid

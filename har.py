@@ -14,6 +14,18 @@ def header_json_repr(d):
         } for k, v in d.iteritems()
     ]
 
+def query_json_repr(d):
+    # d = {string: [string]}
+    # we need to print all values of the list
+    output = []
+    for k, l in d.iteritems():
+        for v in l:
+            output.append({
+                'name': k,
+                'value': v
+            })
+    return output
+
 # add json_repr methods to http classes
 def HTTPRequestJsonRepr(self):
     '''
@@ -21,10 +33,10 @@ def HTTPRequestJsonRepr(self):
     '''
     return {
         'method': self.msg.method,
-        'url': self.msg.uri,
+        'url': self.url,
         'httpVersion': self.msg.version,
         'cookies': [],
-        'queryString': [],
+        'queryString': query_json_repr(self.query),
         'headersSize': -1,
         'headers': header_json_repr(self.msg.headers),
         'bodySize': len(self.msg.body),
@@ -32,6 +44,13 @@ def HTTPRequestJsonRepr(self):
 http.Request.json_repr = HTTPRequestJsonRepr
 
 def HTTPResponseJsonRepr(self):
+    content =  {
+        'size': len(self.body),
+        'compression': len(self.body) - len(self.raw_body),
+        'mimeType': self.mimeType,
+    }
+    if self.text:
+        content['text'] = self.text.encode('utf8') # must transcode to utf8
     return {
         'status': self.msg.status,
         'statusText': self.msg.reason,
@@ -41,10 +60,7 @@ def HTTPResponseJsonRepr(self):
         'bodySize': len(self.msg.body),
         'redirectURL': self.msg.headers['location'] if 'location' in self.msg.headers else '',
         'headers': header_json_repr(self.msg.headers),
-        'content': {
-            'size': len(self.msg.body), # should really be uncompressed length
-            'mimeType': self.mimeType
-        },
+        'content': content,
     }
 http.Response.json_repr = HTTPResponseJsonRepr
 
