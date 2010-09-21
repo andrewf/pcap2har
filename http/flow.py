@@ -1,4 +1,4 @@
-import dpkt
+import dpkt.Error
 from http import Request, Response
 
 class Flow:
@@ -20,7 +20,7 @@ class Flow:
             success, requests, responses = parse_streams(tcpflow.rev, tcpflow.fwd)
             if not success:
                 # flow is not HTTP
-                raise HTTPError('TCPFlow does not contain HTTP')
+                raise HTTPError('TCP Flow does not contain HTTP')
         # match up requests with nearest response that occured after them
         # first request is the benchmark; responses before that are irrelevant for now
         self.pairs = []
@@ -57,19 +57,35 @@ def gather_messages(MessageClass, tcpdir):
     Args:
     MessageClass = class, Request or Response
     tcpdir = TCPDirection, from which will be extracted the data
+    Returns:
+    [MessageClass]
+
+    If the first message fails to construct, the flow is considered to be
+    invalid. After that, all messages are stored and returned. The end of the
+    data or an invalid message. This is designed to handle partially valid HTTP
+    flows semi-gracefully: if the flow is bad, the application probably bailed
+    on it after that anyway.
     '''
     messages = [] # [MessageClass]
     pointer = 0 # starting index of data that MessageClass should look at
+    # while there's data left
     while pointer < len(tcpdir.data):
-        curr_data = tcpdir.data[pointer:pointer+200]
-        msg = MessageClass(tcpdir, pointer)
+        #curr_data = tcpdir.data[pointer:pointer+200] # debug var
+        try:
+            msg = MessageClass(tcpdir, pointer)
+        except dpkt.Error: # if the message failed
+            if pointer == 0: # if this is the first message
+                raise http.Error('Invalid http')
+            else: # we're done parsing messages
+                break # out of the loop
+        # ok, all good
         messages.append(msg)
         pointer += msg.data_consumed
     return messages
 
 def parse_streams(request_stream, response_stream):
     '''
-    attempts to construct dpkt.http.Request/Response's from the corresponding
+    attempts to construct http.Request/Response's from the corresponding
     passed streams. Failure may either mean that the streams are malformed or
     they are simply switched
     Args:

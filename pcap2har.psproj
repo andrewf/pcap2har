@@ -11,69 +11,96 @@ ClassName=TProjectFilesNode
 
 [Project\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFolderNode
-Name=tcp
+Name=http
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\__init__.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http\__init__.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\chunk.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http\flow.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\direction.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http\message.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\flow.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http\request.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\packet.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http\response.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
 Count=5
 
 [Project\ChildNodes\Node0\ChildNodes\Node1]
+ClassName=TProjectFolderNode
+Name=tcp
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\har.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\__init__.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node1]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\chunk.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node2]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\direction.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node3]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\flow.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node4]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\packet.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes]
+Count=5
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\har.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\httpsession.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\main.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\httpsession.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcap.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcaputil.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\pcap.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pyper.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\pcaputil.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcpseq.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\pyper.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcpseq.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
 FileName=C:\Users\Fleenor\Projects\pcap2har\test.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=10
+Count=11
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode

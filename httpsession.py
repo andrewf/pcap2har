@@ -8,11 +8,12 @@ from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 
 class Page:
     '''
-    Represents a page entry in the HAR. 
+    Represents a page entry in the HAR. Requests refer to one by its url.
     '''
-    def __init__(self, title, startedDateTime):
+    def __init__(self, url, title, startedDateTime):
         self.title = title
         self.startedDateTime = startedDateTime # python datetime
+        self.url = url
 
 class Entry:
     '''
