@@ -13,7 +13,7 @@ class TCPFlowAccumulator:
     connections, or flows. It does this by organizing packets into a
     dictionary indexed by their socket (the tuple
     ((srcip, sport), (dstip,dport)), possibly the other way around).
-    
+
     Members:
     flowdict = {socket: tcp.Flow}, the list of tcp.Flow's organized by socket
     '''
@@ -21,7 +21,7 @@ class TCPFlowAccumulator:
         '''
         scans the pcap_reader for TCP packets, and adds them to the tcp.Flow
         they belong to, based on their socket
-        
+
         Args:
         pcap_reader = pcaputil.ModifiedReader
         errors = list of errors encountered during parsing pcap.
@@ -48,12 +48,19 @@ class TCPFlowAccumulator:
                         if isinstance(ip.data, dpkt.tcp.TCP):
                             # then it's a TCP packet
                             # process it
-                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip, ip.data)
+                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip,
+                                                ip.data)
+##                            print ("LSONG_DEBUG ",
+##                                   __file__, tcppkt.seq_start, tcppkt.seq_end,
+##                                   tcppkt.seq_end - tcppkt.seq_start,
+##                                   len(tcppkt.tcp.data))
                             self.process_packet(tcppkt) # organize by socket
+                    # TODO(lsong): UDP packet for DNS lookup.
                 except dpkt.Error as e:
                     self.errors.append((pkt, e, debug_pkt_count))
         except dpkt.dpkt.NeedData as e:
-            log.warning('A packet in the pcap file was too short, debug_pkt_count=%d' % debug_pkt_count)
+            log.warning('A packet in the pcap file was too short, '
+                        'debug_pkt_count=%d' % debug_pkt_count)
             self.errors.append((None, e))
         # finish all tcp flows
         map(tcp.Flow.finish, self.flowdict.itervalues())
@@ -67,6 +74,13 @@ class TCPFlowAccumulator:
         src, dst = pkt.socket
         #ok, NOW add it
         #print 'processing packet: ', pkt
+        srcip, srcport = src  # LSONG
+        dstip, dstport = dst  # LSONG
+        if (srcport == 5223 or dstport == 5223):  # LSONG
+            # hpvirtgrp  #LSONG
+            print "%s LSONG_DEBUG: hpvirtgrp" %(__file__)  # LSONG
+            return  # LSONG
+
         if (src, dst) in self.flowdict:
             #print '  adding as ', (src, dst)
             self.flowdict[(src,dst)].add(pkt)

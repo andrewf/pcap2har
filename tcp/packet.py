@@ -58,10 +58,3 @@ class Packet(object):
             self.tcp.ack,
             friendly_data(self.tcp.data)[:60]
         )
-    def overlaps(self, other):
-        return (self.seq_start <= other.seq_start and \
-                other.seq_start < self.seq_end) \
-                              or \
-               (self.seq_start < other.seq_end and \
-                other.seq_end <= self.seq_end)
-

@@ -4,7 +4,7 @@ import tcp
 class Direction:
     '''
     Represents data moving in one direction in a TCP flow.
-    
+
     Members:
     * chunks = [tcp.Chunk], sorted by seq_start
     * flow = tcp.Flow, the flow to which the direction belongs
@@ -15,7 +15,7 @@ class Direction:
     def __init__(self, flow):
         '''
         Sets things up for adding packets.
-        
+
         Args:
         flow = tcp.Flow
         '''
@@ -24,14 +24,16 @@ class Direction:
         self.closed_cleanly = False # until proven true
         self.chunks = []
         self.flow = flow
-        self.seq_start= None # the seq number of the first byte of data, valid after finish() if self.data is valid
+        # the seq number of the first byte of data,
+        # valid after finish() if self.data is valid
+        self.seq_start= None
     def add(self, pkt):
         '''
         Merge the packet into the first chunk it overlaps with. If data was
         added to the end of a chunk, attempts to merge the next chunk (if there
         is one). This way, it is ensured that everything is as fully merged as
         it can be with the current data.
-        
+
         Args:
         pkt = tcp.Packet
         '''
@@ -42,7 +44,8 @@ class Direction:
         merged = False
         for i in range(len(self.chunks)):
             chunk = self.chunks[i]
-            overlapped, result = chunk.merge(pkt, self.create_merge_callback(pkt))
+            overlapped, result = chunk.merge(pkt,
+                                             self.create_merge_callback(pkt))
             if overlapped: # if the data overlapped
                 # if data was added on the back and there is a chunk after this
                 if result[1] and i < (len(self.chunks)-1):
@@ -50,7 +53,8 @@ class Direction:
                     # in case that packet bridged the gap
                     overlapped2, result2 = chunk.merge(self.chunks[i+1])
                     if overlapped2: # if that merge worked
-                        assert( (not result2[0]) and (result2[1])) # data should only be added to back
+                        # data should only be added to back
+                        assert( (not result2[0]) and (result2[1]))
                         del self.chunks[i+1] # remove the now-redundant chunk
                 merged = True
                 break # skip further chunks
@@ -81,16 +85,20 @@ class Direction:
         '''
         self.final_arrival_data = []
         peak_time = 0.0
-        for vertex in self.arrival_data: # final arrival vertex always coincides with arrival vertex
+        # final arrival vertex always coincides with an arrival vertex
+        for vertex in self.arrival_data:
             if vertex[1].ts > peak_time:
                 peak_time = vertex[1].ts
                 self.final_arrival_data.append((vertex[0], vertex[1].ts))
-        self.final_arrival_data = SortedCollection(self.final_arrival_data, key=lambda v: v[0])
+        self.final_arrival_data = SortedCollection(
+            self.final_arrival_data,
+            key=lambda v: v[0]
+        )
 
     def new_chunk(self, pkt):
         '''
-        creates a new tcp.Chunk for the pkt to live in. Only called if an attempt
-        has been made to merge the packet with all existing chunks.
+        creates a new tcp.Chunk for the pkt to live in. Only called if an
+        attempt has been made to merge the packet with all existing chunks.
         '''
         chunk = tcp.Chunk()
         chunk.merge(pkt, self.create_merge_callback(pkt))
@@ -119,8 +127,8 @@ class Direction:
     def seq_arrival(self, seq_num):
         '''
         returns the packet in which the specified sequence number first arrived.
-        self.arrival_data must be a SortedCollection at this point; self.finish()
-        must have been called.
+        self.arrival_data must be a SortedCollection at this point;
+        self.finish() must have been called.
         '''
         if self.arrival_data:
             return self.arrival_data.find_le(seq_num)[1]
