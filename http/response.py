@@ -20,7 +20,7 @@ class Response(http.Message):
     * mediaType: mediatype.MediaType, constructed from content-type
     * mimeType: string mime type of returned data
     * body: http decoded body data, otherwise unmodified
-    * body text, unicoded if possible, or None if the body is not text
+    * text: body text, unicoded if possible, or None if the body is not text
     * compression: string, compression type
     * original_encoding: string, original text encoding/charset/whatever
     '''
@@ -89,9 +89,13 @@ class Response(http.Message):
         to unicode if possible. Must come after handle_compression, and after
         self.mediaType is valid.
         '''
+        print "LSONG_DEBUG", __file__, self.mediaType
+        self.text = None
         # if the body is text
-        if self.mediaType.type == 'text' or \
-                (self.mediaType.type == 'application' and 'xml' in self.mediaType.subtype):
+        if (self.mediaType and
+            (self.mediaType.type == 'text' or
+                (self.mediaType.type == 'application' and
+                 'xml' in self.mediaType.subtype))):
             # if there was a charset parameter in HTTP header, store it
             if 'charset' in self.mediaType.params:
                 override_encodings = [self.mediaType.params['charset']]

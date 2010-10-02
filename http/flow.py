@@ -1,4 +1,5 @@
-import dpkt.Error
+import dpkt
+import http
 from http import Request, Response
 
 class Flow:
@@ -9,6 +10,9 @@ class Flow:
     after them which has not already been paired with a previous request. Responses
     that don't match up with a request are ignored. Requests with no response are
     paired with None.
+
+    Members:
+    pairs = [MessagePair], where ei
     '''
     def __init__(self, tcpflow):
         '''
@@ -32,7 +36,7 @@ class Flow:
             if len(requests) > len(pairable_responses): # if there are more requests than responses
                 # pad responses with None
                 pairable_responses.extend( [None for i in range(len(requests) - len(pairable_responses))] )
-            # if there are more responses, we would just ignore them anyway, which zip does for use
+            # if there are more responses, we would just ignore them anyway, which zip does for us
             # create MessagePair's
             for req, resp in zip(requests, responses):
                 self.pairs.append(MessagePair(req, resp))
@@ -70,7 +74,7 @@ def gather_messages(MessageClass, tcpdir):
     pointer = 0 # starting index of data that MessageClass should look at
     # while there's data left
     while pointer < len(tcpdir.data):
-        #curr_data = tcpdir.data[pointer:pointer+200] # debug var
+        curr_data = tcpdir.data[pointer:pointer+200] # debug var
         try:
             msg = MessageClass(tcpdir, pointer)
         except dpkt.Error: # if the message failed
@@ -78,6 +82,8 @@ def gather_messages(MessageClass, tcpdir):
                 raise http.Error('Invalid http')
             else: # we're done parsing messages
                 break # out of the loop
+        except:
+            raise
         # ok, all good
         messages.append(msg)
         pointer += msg.data_consumed
