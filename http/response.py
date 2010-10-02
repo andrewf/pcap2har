@@ -1,7 +1,8 @@
 import gzip
 import zlib
 import cStringIO
-import dpkt.http
+#import dpkt.http this is buggy
+import dpkt_http_replacement as dpkt_http
 import http
 from mediatype import MediaType
 #from http import DecodingError # exception class from parent module
@@ -25,7 +26,7 @@ class Response(http.Message):
     * original_encoding: string, original text encoding/charset/whatever
     '''
     def __init__(self, tcpdir, pointer):
-        http.Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
+        http.Message.__init__(self, tcpdir, pointer, dpkt_http.Response)
         # uncompress body if necessary
         self.handle_compression()
         # get mime type
