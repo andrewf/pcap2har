@@ -1,5 +1,7 @@
 pcap2har: converts .pcap network capture files to HTTP Archive files.
 
+mailing list: http://groups.google.com/group/pcap2har
+
 The HAR format is still not completely supported, but the main parts are there
 and features are being added.
 

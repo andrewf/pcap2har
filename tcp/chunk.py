@@ -37,10 +37,12 @@ class Chunk:
         Note that (True, (False, False)) is a valid value, which indicates that
         the new data was completely inside the existing data
         '''
-        if new.data: # if we have actual data yet (maybe false if there was no init packet)
+        # if we have actual data yet (maybe false if there was no init packet)
+        if new.data:
             # assume self.seq_* are also valid
             if self.data:
-                return self.inner_merge((new.seq_start, new.seq_end), new.data, new_seq_callback)
+                return self.inner_merge((new.seq_start, new.seq_end),
+                                        new.data, new_seq_callback)
             else:
                 # if they have data and we don't, just steal theirs
                 self.data = new.data
@@ -71,13 +73,16 @@ class Chunk:
         added_front_data = False
         added_back_data = False
         # front data?
-        if seq.lt(newseq[0], self.seq_start) and seq.lte(self.seq_start, newseq[1]):
+        if (seq.lt(newseq[0], self.seq_start) and
+            seq.lte(self.seq_start, newseq[1])):
             new_data_length = seq.subtract(self.seq[0], newseq[0])
-            self.data = newdata[:new_data_length] + self.data # slice out new data, stick it on the front
+            # slice out new data, stick it on the front
+            self.data = newdata[:new_data_length] + self.data
             self.seq_start = newseq[0]
             # notifications
             overlapped = True
             added_front_data = True
+            #print ("LSONG_DEBGU ", __file__, "overlapped, front_data")
             if callback:
                 callback(newseq[0])
         # back data?
@@ -88,11 +93,16 @@ class Chunk:
             # notifications
             overlapped = True
             added_back_data = True
+            #print ("LSONG_DEBGU ", __file__, "overlapped, back_data")
             if callback:
-                back_seq_start = newseq[1] - new_data_length # the first seq number of new data in the back
+                # the first seq number of new data in the back
+                back_seq_start = newseq[1] - new_data_length
                 callback(back_seq_start)
         # completely inside?
-        if seq.lte(self.seq_start, newseq[0]) and seq.lte(newseq[1], self.seq_end):
+        if (seq.lte(self.seq_start, newseq[0]) and
+            seq.lte(newseq[1], self.seq_end)):
             overlapped = True
+            #print ("LSONG_DEBGU ", __file__, "overlapped, inside")
+            # Nothing to do with the data?
         # done
         return (overlapped, (added_front_data, added_back_data))

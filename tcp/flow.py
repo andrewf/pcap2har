@@ -33,10 +33,12 @@ class Flow:
         if len(self.packets): # if we have received packets before...
             if self.packets[-1].ts > pkt.ts: # if this one is out of order...
                 # error out
-                raise ValueError("packet added to TCPFlow out of chronological order")
+                raise ValueError("packet added to TCPFlow out of "
+                                 "chronological order")
         self.packets.append(pkt)
         # look out for handshake
-        # add it to the appropriate direction, if we've found or given up on finding handshake
+        # add it to the appropriate direction, if we've found or given up on
+        # finding handshake
         if self.handshake is not None:
             self.merge_pkt(pkt)
         else: # if handshake is None, we're still looking for a handshake
@@ -45,8 +47,10 @@ class Flow:
                 self.handshake = False
                 self.socket = self.packets[0].socket
                 self.flush_packets() # merge all stored packets
+                print "LSONG_DEBUG %s: cannot detect handshake." % (__file__)
             # check last three packets
-            elif tcp.detect_handshake(self.packets[-3:]): # function handles packets < 3 case
+            elif tcp.detect_handshake(self.packets[-3:]):
+                # function handles packets < 3 case
                 self.handshake = tuple(self.packets[-3:])
                 self.socket = self.handshake[0].socket
                 self.flush_packets()

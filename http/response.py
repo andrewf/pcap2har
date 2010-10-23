@@ -1,7 +1,8 @@
 import gzip
 import zlib
 import cStringIO
-import dpkt.http
+#import dpkt.http this is buggy
+import dpkt_http_replacement as dpkt_http
 import http
 from mediatype import MediaType
 #from http import DecodingError # exception class from parent module
@@ -20,12 +21,12 @@ class Response(http.Message):
     * mediaType: mediatype.MediaType, constructed from content-type
     * mimeType: string mime type of returned data
     * body: http decoded body data, otherwise unmodified
-    * body text, unicoded if possible, or None if the body is not text
+    * text: body text, unicoded if possible, or None if the body is not text
     * compression: string, compression type
     * original_encoding: string, original text encoding/charset/whatever
     '''
     def __init__(self, tcpdir, pointer):
-        http.Message.__init__(self, tcpdir, pointer, dpkt.http.Response)
+        http.Message.__init__(self, tcpdir, pointer, dpkt_http.Response)
         # uncompress body if necessary
         self.handle_compression()
         # get mime type
@@ -89,9 +90,13 @@ class Response(http.Message):
         to unicode if possible. Must come after handle_compression, and after
         self.mediaType is valid.
         '''
+        print "LSONG_DEBUG", __file__, self.mediaType
+        self.text = None
         # if the body is text
-        if self.mediaType.type == 'text' or \
-                (self.mediaType.type == 'application' and 'xml' in self.mediaType.subtype):
+        if (self.mediaType and
+            (self.mediaType.type == 'text' or
+                (self.mediaType.type == 'application' and
+                 'xml' in self.mediaType.subtype))):
             # if there was a charset parameter in HTTP header, store it
             if 'charset' in self.mediaType.params:
                 override_encodings = [self.mediaType.params['charset']]

@@ -1,5 +1,6 @@
 import urlparse
-import dpkt.http
+#import dpkt.http this is buggy
+import dpkt_http_replacement as dpkt_http
 import http
 
 class Request(http.Message):
@@ -12,7 +13,7 @@ class Request(http.Message):
     * url: Full URL, but without fragments. (that's what HAR wants)
     '''
     def __init__(self, tcpdir, pointer):
-        http.Message.__init__(self, tcpdir, pointer, dpkt.http.Request)
+        http.Message.__init__(self, tcpdir, pointer, dpkt_http.Request)
         # get query string. its the URL after the first '?'
         uri = urlparse.urlparse(self.msg.uri)
         self.host = self.msg.headers['host'] if 'host' in self.msg.headers else ''

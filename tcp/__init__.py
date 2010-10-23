@@ -29,10 +29,14 @@ def detect_handshake(packets):
     if syn.tcp.flags & dpkt.tcp.TH_SYN and not syn.tcp.flags & dpkt.tcp.TH_ACK:
         # have syn
         fwd_seq = syn.seq # start_seq is the seq field of the segment
-        if synack.flags & dpkt.tcp.TH_SYN and synack.flags & dpkt.tcp.TH_ACK and synack.ack == fwd_seq + 1:
+        if (synack.flags & dpkt.tcp.TH_SYN and
+            synack.flags & dpkt.tcp.TH_ACK and
+            synack.ack == fwd_seq + 1):
             # have synack
             rev_seq = synack.seq
-            if ack.flags & dpkt.tcp.TH_ACK and ack.ack == rev_seq + 1 and ack.seq == fwd_seq + 1:
+            if (ack.flags & dpkt.tcp.TH_ACK and
+                ack.ack == rev_seq + 1 and
+                ack.seq == fwd_seq + 1):
                 # have ack
                 return True
     return False
