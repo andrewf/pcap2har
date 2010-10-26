@@ -4,6 +4,7 @@ import tcp
 import tcpseq as seq # hopefully no name collisions
 from sortedcollection import SortedCollection
 from dpkt.tcp import *
+import logging as log
 
 class Flow:
     '''
@@ -47,7 +48,7 @@ class Flow:
                 self.handshake = False
                 self.socket = self.packets[0].socket
                 self.flush_packets() # merge all stored packets
-                print "LSONG_DEBUG %s: cannot detect handshake." % (__file__)
+                log.debug("LSONG_DEBUG %s: cannot detect handshake." % (__file__))
             # check last three packets
             elif tcp.detect_handshake(self.packets[-3:]):
                 # function handles packets < 3 case

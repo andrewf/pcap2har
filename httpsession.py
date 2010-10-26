@@ -76,7 +76,7 @@ class Entry:
             'cache': {},
         }
 
-class UserAgentTracker:
+class UserAgentTracker(object):
     '''
     Keeps track of how many uses each user-agent header receives, and provides
     a function for finding the most-used one.
@@ -104,6 +104,34 @@ class UserAgentTracker:
             # return the string from the key-value pair with the biggest value
             return max(self.data.iteritems(), key=lambda v: v[1])[0]
 
+def page2title(page):
+    return page
+
+class PageTracker(object):
+    def __init__(self):
+        self.pages = dict() # {page: [ref_string, start_time, title]}
+
+    def getref(self, page, start_time):
+        if page not in self.pages:
+            idx = len(self.pages)
+            self.pages[page] = ['pageref_%d'%(idx), start_time, page2title(page)]
+        else:
+            if self.pages[page][1] > start_time:
+                self.pages[page][1] = start_time
+        return self.pages[page][0]
+
+    def json_repr(self):
+        '''
+        return a JSON serializable python object representation of self.
+        '''
+        srt = sorted([(s,r,t,l) for s,(r,t,l) in self.pages.items()], key=lambda x: x[2])
+        return [{
+            'startedDateTime': start_time.isoformat() + 'Z', # assume time is in UTC
+            'id': page_ref,
+            'title': title,
+            'pageTimings': {}
+            } for page_str, page_ref, start_time, title in srt]
+
 class HTTPSession(object):
     '''
     Represents all http traffic from within a pcap.
@@ -120,18 +148,22 @@ class HTTPSession(object):
         '''
         # set-up
         self.user_agents = UserAgentTracker()
+        self.page_tracker = PageTracker()
         self.entries = []
+        by_ref = {}
         # iter through messages
         for msg in messages:
             # if msg.request has a user-agent, add it to our list
+            entry = Entry(msg.request, msg.response)
+
             if 'user-agent' in msg.request.msg.headers:
                 self.user_agents.add(msg.request.msg.headers['user-agent'])
+
             # if msg.request has a referer, keep track of that, too
-            if 'referer' in msg.request.msg.headers:
-                # not really
-                pass
+            entry.page_ref = self.page_tracker.getref(msg.request.msg.headers.get('referer', ''), entry.startedDateTime)
+
             # parse basic data in the pair, add it to the list
-            self.entries.append(Entry(msg.request, msg.response))
+            self.entries.append(entry)
 
         # LSONG sort the entries on start
         self.entries.sort(lambda x,y: x.ts_start < y.ts_start)  # LSONG
@@ -151,7 +183,7 @@ class HTTPSession(object):
                     'name': self.user_agent,
                     'version': 'mumble'
                 },
-                'pages': [],
-                'entries': self.entries
+                'pages': self.page_tracker,
+                'entries': sorted(self.entries, key=lambda x: x.ts_start)
             }
         }

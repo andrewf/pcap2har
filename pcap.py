@@ -78,7 +78,7 @@ class TCPFlowAccumulator:
         dstip, dstport = dst  # LSONG
         if (srcport == 5223 or dstport == 5223):  # LSONG
             # hpvirtgrp  #LSONG
-            print "%s LSONG_DEBUG: hpvirtgrp" %(__file__)  # LSONG
+            log.debug("%s LSONG_DEBUG: hpvirtgrp" %(__file__))  # LSONG
             return  # LSONG
 
         if (src, dst) in self.flowdict:

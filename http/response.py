@@ -5,6 +5,7 @@ import cStringIO
 import dpkt_http_replacement as dpkt_http
 import http
 from mediatype import MediaType
+import logging as log
 #from http import DecodingError # exception class from parent module
 
 # try to import UnicodeDammit from BeautifulSoup
@@ -90,7 +91,7 @@ class Response(http.Message):
         to unicode if possible. Must come after handle_compression, and after
         self.mediaType is valid.
         '''
-        print "LSONG_DEBUG", __file__, self.mediaType
+        log.debug("LSONG_DEBUG", __file__, self.mediaType)
         self.text = None
         # if the body is text
         if (self.mediaType and
