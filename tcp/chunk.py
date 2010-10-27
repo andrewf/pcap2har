@@ -75,14 +75,13 @@ class Chunk:
         # front data?
         if (seq.lt(newseq[0], self.seq_start) and
             seq.lte(self.seq_start, newseq[1])):
-            new_data_length = seq.subtract(self.seq[0], newseq[0])
+            new_data_length = seq.subtract(self.seq_start, newseq[0])
             # slice out new data, stick it on the front
             self.data = newdata[:new_data_length] + self.data
             self.seq_start = newseq[0]
             # notifications
             overlapped = True
             added_front_data = True
-            #print ("LSONG_DEBGU ", __file__, "overlapped, front_data")
             if callback:
                 callback(newseq[0])
         # back data?
@@ -93,7 +92,6 @@ class Chunk:
             # notifications
             overlapped = True
             added_back_data = True
-            #print ("LSONG_DEBGU ", __file__, "overlapped, back_data")
             if callback:
                 # the first seq number of new data in the back
                 back_seq_start = newseq[1] - new_data_length
@@ -102,7 +100,5 @@ class Chunk:
         if (seq.lte(self.seq_start, newseq[0]) and
             seq.lte(newseq[1], self.seq_end)):
             overlapped = True
-            #print ("LSONG_DEBGU ", __file__, "overlapped, inside")
-            # Nothing to do with the data?
         # done
         return (overlapped, (added_front_data, added_back_data))

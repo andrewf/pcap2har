@@ -36,8 +36,8 @@ class Entry:
         self.request = request
         self.response = response
         self.page_ref = ''
-        self.ts_start = int(request.ts_start * 1000)  # LSONG millisecond
-        self.startedDateTime = datetime.fromtimestamp(request.ts_start)
+        self.ts_start = int(request.ts_connect*1000)
+        self.startedDateTime = datetime.fromtimestamp(request.ts_connect)
         endedDateTime = datetime.fromtimestamp(response.ts_end)
         self.total_time = ms_from_timedelta(
             endedDateTime - self.startedDateTime # plus connection time, someday
@@ -45,7 +45,8 @@ class Entry:
         # calculate other timings
         self.time_blocked = -1
         self.time_dnsing = -1
-        self.time_connecting = -1
+        self.time_connecting = ms_from_dpkt_time(request.ts_start -
+                                                 request.ts_connect)
         self.time_sending = \
             ms_from_dpkt_time(request.ts_end - request.ts_start)
         self.time_waiting = \
@@ -165,8 +166,8 @@ class HTTPSession(object):
             # parse basic data in the pair, add it to the list
             self.entries.append(entry)
 
-        # LSONG sort the entries on start
-        self.entries.sort(lambda x,y: x.ts_start < y.ts_start)  # LSONG
+        # Sort the entries on start
+        self.entries.sort(lambda x,y: int(x.ts_start - y.ts_start))
         self.user_agent = self.user_agents.dominant_user_agent()
     def json_repr(self):
         '''

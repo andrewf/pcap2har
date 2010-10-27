@@ -52,7 +52,7 @@ def HTTPResponseJsonRepr(self):
     if self.text:
         content['text'] = self.text.encode('utf8') # must transcode to utf8
     return {
-        'status': self.msg.status,
+        'status': int(self.msg.status),
         'statusText': self.msg.reason,
         'httpVersion': self.msg.version,
         'cookies': [],

@@ -91,7 +91,6 @@ class Response(http.Message):
         to unicode if possible. Must come after handle_compression, and after
         self.mediaType is valid.
         '''
-        log.debug("LSONG_DEBUG", __file__, self.mediaType)
         self.text = None
         # if the body is text
         if (self.mediaType and

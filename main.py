@@ -20,7 +20,7 @@ parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options
 options, args = parser.parse_args()
 
 # setup logs
-logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
+logging.basicConfig(filename='pcap2har.log', level=logging.DEBUG)
 
 # get filenames, or bail out with usage error
 if len(args) == 2:
@@ -29,21 +29,25 @@ else:
     parser.print_help()
     sys.exit()
 
+logging.info("Processing %s", inputfile)
 flows = pcap.TCPFlowsFromFile(inputfile)
 
 # generate HTTP Flows
 httpflows = []
+flow_count = 0
 for f in flows.flowdict.itervalues():
     try:
         httpflows.append(http.Flow(f))
-    except http.Error as e:
-        pass
+        flow_count += 1
+    except http.Error as error:
+        logging.warning(error)
 
 # put all message pairs in one list
 def combine_pairs(pairs, flow):
     return pairs + flow.pairs
 pairs = reduce(combine_pairs, httpflows, [])
 
+logging.info("Flow=%d HTTP=%d" % (flow_count,len(pairs)))
 # parse HAR stuff
 session = httpsession.HTTPSession(pairs)
 

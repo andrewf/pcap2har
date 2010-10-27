@@ -48,20 +48,17 @@ class TCPFlowAccumulator:
                         if isinstance(ip.data, dpkt.tcp.TCP):
                             # then it's a TCP packet
                             # process it
-                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip,
-                                                ip.data)
-##                            print ("LSONG_DEBUG ",
-##                                   __file__, tcppkt.seq_start, tcppkt.seq_end,
-##                                   tcppkt.seq_end - tcppkt.seq_start,
-##                                   len(tcppkt.tcp.data))
+                            tcppkt = tcp.Packet(pkt[0], pkt[1], eth, ip, ip.data)
                             self.process_packet(tcppkt) # organize by socket
                     # TODO(lsong): UDP packet for DNS lookup.
-                except dpkt.Error as e:
+                except dpkt.Error as error:
+                    log.warning(error)
                     self.errors.append((pkt, e, debug_pkt_count))
-        except dpkt.dpkt.NeedData as e:
+        except dpkt.dpkt.NeedData as error:
+            log.warning(error)
             log.warning('A packet in the pcap file was too short, '
                         'debug_pkt_count=%d' % debug_pkt_count)
-            self.errors.append((None, e))
+            self.errors.append((None, error))
         # finish all tcp flows
         map(tcp.Flow.finish, self.flowdict.itervalues())
 
@@ -72,14 +69,12 @@ class TCPFlowAccumulator:
         #try both orderings of src/dst socket components
         #otherwise, start a new list for that socket
         src, dst = pkt.socket
-        #ok, NOW add it
-        #print 'processing packet: ', pkt
-        srcip, srcport = src  # LSONG
-        dstip, dstport = dst  # LSONG
-        if (srcport == 5223 or dstport == 5223):  # LSONG
-            # hpvirtgrp  #LSONG
-            log.debug("%s LSONG_DEBUG: hpvirtgrp" %(__file__))  # LSONG
-            return  # LSONG
+        srcip, srcport = src
+        dstip, dstport = dst
+        if (srcport == 5223 or dstport == 5223):
+            # hpvirtgrp
+            log.debug("hpvirtgrp packets are ignored.")
+            return
 
         if (src, dst) in self.flowdict:
             #print '  adding as ', (src, dst)

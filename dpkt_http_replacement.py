@@ -24,9 +24,7 @@ def parse_headers(f):
         k = l[0][:-1].lower()
         v = len(l) != 1 and l[1] or ''
         if k in d:
-            if not type(d[k]) is list:
-                d[k] = [d[k]]
-            d[k].append(v)
+            d[k] += ','+v
         else:
             d[k] = v
     return d

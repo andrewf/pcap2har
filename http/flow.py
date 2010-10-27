@@ -1,3 +1,4 @@
+import logging
 import dpkt
 import http
 from http import Request, Response
@@ -38,12 +39,21 @@ class Flow:
                 pairable_responses.extend( [None for i in range(len(requests) - len(pairable_responses))] )
             # if there are more responses, we would just ignore them anyway, which zip does for us
             # create MessagePair's
+            connected = False
             for req, resp in zip(requests, responses):
+                if not req:
+                    logging.warning("Request is missing.")
+                    continue
+                if not connected and tcpflow.handshake:
+                    req.ts_connect = tcpflow.handshake[0].ts
+                    connected = True
+                else:
+                    req.ts_connect = req.ts_start
                 self.pairs.append(MessagePair(req, resp))
         except LookupError:
             # there were no responses after the first request
             # there's nothing we can do
-            pass
+            logging.warning("Request has no reponse.")
 
 class MessagePair:
     '''
@@ -77,10 +87,11 @@ def gather_messages(MessageClass, tcpdir):
         curr_data = tcpdir.data[pointer:pointer+200] # debug var
         try:
             msg = MessageClass(tcpdir, pointer)
-        except dpkt.Error: # if the message failed
+        except dpkt.Error as error: # if the message failed
             if pointer == 0: # if this is the first message
                 raise http.Error('Invalid http')
             else: # we're done parsing messages
+                logging.warning("We got a dpkt.Error %s, but we are done." % error)
                 break # out of the loop
         except:
             raise
