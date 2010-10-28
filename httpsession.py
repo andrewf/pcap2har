@@ -61,7 +61,7 @@ class Entry:
         return a JSON serializable python object representation of self.
         '''
         return {
-            'page_ref': self.page_ref,
+            'pageref': self.page_ref,
             'startedDateTime': self.startedDateTime.isoformat() + 'Z', # assume time is in UTC
             'time': self.total_time,
             'request': self.request,
@@ -129,7 +129,7 @@ class PageTracker(object):
         return [{
             'startedDateTime': start_time.isoformat() + 'Z', # assume time is in UTC
             'id': page_ref,
-            'title': title,
+            'title': title if title != '' else 'top',
             'pageTimings': {}
             } for page_str, page_ref, start_time, title in srt]
 

@@ -47,8 +47,16 @@ def HTTPResponseJsonRepr(self):
     content =  {
         'size': len(self.body),
         'compression': len(self.body) - len(self.raw_body),
-        'mimeType': self.mimeType,
     }
+    if self.mimeType != '':
+        content['mimeType'] = self.mimeType
+    else:
+        # TBD: this case causes verification errors--change the spec? set a default?
+        # this happens when there's no content-type header, which often
+        # happens for an empty body (which often happens for 301 (redirect), 
+        # and sometimes even for 200)
+        content['mimeType'] = self.mimeType
+
     if self.text:
         content['text'] = self.text.encode('utf8') # must transcode to utf8
     return {
