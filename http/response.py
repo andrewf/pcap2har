@@ -33,10 +33,9 @@ class Response(http.Message):
         # get mime type
         if 'content-type' in self.msg.headers:
             self.mediaType = MediaType(self.msg.headers['content-type'])
-            self.mimeType = self.mediaType.mimeType()
         else:
-            self.mediaType = None
-            self.mimeType = ''
+            self.mediaType = MediaType('application/x-unknown-content-type')
+        self.mimeType = self.mediaType.mimeType()
         # try to get out unicode
         self.handle_text()
     def handle_compression(self):
