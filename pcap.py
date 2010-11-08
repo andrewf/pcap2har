@@ -42,7 +42,13 @@ class TCPFlowAccumulator:
                     self.errors.append((pkt, 'packet is too short', debug_pkt_count))
                 # parse packet
                 try:
-                    eth = dpkt.ethernet.Ethernet(pkt[1])
+                    dltoff = dpkt.pcap.dltoff
+                    if pcap_reader.dloff == dltoff[dpkt.pcap.DLT_LINUX_SLL]:
+                        eth = dpkt.sll.SLL(pkt[1])
+                    else:
+                        # TODO(lsong): Check other packet type.
+                        # Default is ethernet.
+                        eth = dpkt.ethernet.Ethernet(pkt[1])
                     if isinstance(eth.data, dpkt.ip.IP):
                         ip = eth.data
                         if isinstance(ip.data, dpkt.tcp.TCP):
@@ -72,8 +78,13 @@ class TCPFlowAccumulator:
         srcip, srcport = src
         dstip, dstport = dst
         if (srcport == 5223 or dstport == 5223):
-            # hpvirtgrp
-            log.debug("hpvirtgrp packets are ignored.")
+            log.warning("hpvirtgrp packets are ignored.")
+            return
+        if (srcport == 5228 or dstport == 5228):
+            log.warning("hpvroom packets are ignored.")
+            return
+        if (srcport == 443 or dstport == 443):
+            log.warning("HTTPS packets are ignored.")
             return
 
         if (src, dst) in self.flowdict:
