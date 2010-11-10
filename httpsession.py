@@ -9,6 +9,11 @@ from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 class Page:
     '''
     Represents a page entry in the HAR. Requests refer to one by its url.
+
+    Members:
+    title = string, the title of the page or the url
+    startedDateTime = datetime.datetime
+    url = the page url
     '''
     def __init__(self, url, title, startedDateTime):
         self.title = title
@@ -109,10 +114,24 @@ def page2title(page):
     return page
 
 class PageTracker(object):
+    '''
+    Keeps track of the pages that show up the pcap.
+
+    Members:
+    pages = {page_url(string): [pageref(string), start_time (datetime), title]}
+    '''
     def __init__(self):
         self.pages = dict() # {page: [ref_string, start_time, title]}
 
     def getref(self, page, start_time):
+        '''
+        Either finds or creates the pageref for the page. Returns the pageref,
+        and adds the page to self.pages.
+
+        Arguments:
+        page = url
+        start_time = datetime
+        '''
         if page not in self.pages:
             idx = len(self.pages)
             self.pages[page] = ['pageref_%d'%(idx), start_time, page2title(page)]
@@ -120,6 +139,12 @@ class PageTracker(object):
             if self.pages[page][1] > start_time:
                 self.pages[page][1] = start_time
         return self.pages[page][0]
+
+    # hack until we feel like actually calculating these, if it's possible
+    default_page_timings = {
+        'onContentLoad': -1,
+        'onLoad': -1
+    }
 
     def json_repr(self):
         '''
@@ -130,7 +155,7 @@ class PageTracker(object):
             'startedDateTime': start_time.isoformat() + 'Z', # assume time is in UTC
             'id': page_ref,
             'title': title if title != '' else 'top',
-            'pageTimings': {}
+            'pageTimings': PageTracker.default_page_timings
             } for page_str, page_ref, start_time, title in srt]
 
 class HTTPSession(object):
