@@ -1,5 +1,5 @@
-[PyScripter]
-Version=2.1.1.0
+﻿[PyScripter]
+Version=2.3.3.0
 
 [Project]
 ClassName=TProjectRootNode
@@ -65,42 +65,50 @@ Count=5
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\har.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\dpkt_http_replacement.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\har.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\httpsession.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\http.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\main.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\httpsession.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcap.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcaputil.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\mediatype.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pyper.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\pcap.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcpseq.py
+FileName=C:\Users\Fleenor\Projects\pcap2har\pcaputil.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node10]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\pyper.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node11]
+ClassName=TProjectFileNode
+FileName=C:\Users\Fleenor\Projects\pcap2har\tcpseq.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
 FileName=C:\Users\Fleenor\Projects\pcap2har\test.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=11
+Count=13
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode
