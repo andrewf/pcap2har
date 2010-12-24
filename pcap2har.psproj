@@ -1,9 +1,9 @@
 ﻿[PyScripter]
-Version=2.3.3.0
+Version=2.4.1.0
 
 [Project]
 ClassName=TProjectRootNode
-StoreRelativePaths=FALSE
+StoreRelativePaths=TRUE
 ShowFileExtensions=FALSE
 
 [Project\ChildNodes\Node0]
@@ -15,23 +15,23 @@ Name=http
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http\__init__.py
+FileName=$[Project-Path]http\__init__.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http\flow.py
+FileName=$[Project-Path]http\flow.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http\message.py
+FileName=$[Project-Path]http\message.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http\request.py
+FileName=$[Project-Path]http\request.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http\response.py
+FileName=$[Project-Path]http\response.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
 Count=5
@@ -42,73 +42,77 @@ Name=tcp
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node0]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\__init__.py
+FileName=$[Project-Path]tcp\__init__.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node1]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\chunk.py
+FileName=$[Project-Path]tcp\chunk.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\direction.py
+FileName=$[Project-Path]tcp\direction.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\flow.py
+FileName=$[Project-Path]tcp\flow.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcp\packet.py
+FileName=$[Project-Path]tcp\packet.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes]
 Count=5
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\dpkt_http_replacement.py
+FileName=$[Project-Path]BeautifulSoup.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\har.py
+FileName=$[Project-Path]dpkt_http_replacement.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\http.py
+FileName=$[Project-Path]har.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\httpsession.py
+FileName=$[Project-Path]httpsession.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\main.py
+FileName=$[Project-Path]main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\mediatype.py
+FileName=$[Project-Path]mediatype.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcap.py
+FileName=$[Project-Path]orderedset.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pcaputil.py
+FileName=$[Project-Path]pcap.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\pyper.py
+FileName=$[Project-Path]pcaputil.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\tcpseq.py
+FileName=$[Project-Path]sortedcollection.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
-FileName=C:\Users\Fleenor\Projects\pcap2har\test.py
+FileName=$[Project-Path]tcpseq.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node13]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]test.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=13
+Count=14
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode
