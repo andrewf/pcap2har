@@ -13,6 +13,8 @@ import http
 import httpsession
 import har
 import json
+import tcp
+from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
 parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
@@ -30,12 +32,20 @@ else:
     sys.exit()
 
 logging.info("Processing %s", inputfile)
-flows = pcap.TCPFlowsFromFile(inputfile)
+
+# set up packet dispatcher
+flowbuilder = tcp.FlowBuilder()
+dispatcher = PacketDispatcher(flowbuilder)
+
+# parse pcap file
+pcap.ParsePcap(dispatcher, filename=inputfile)
+flowbuilder.finish()
+# flowbuilder.flowdict now contains tcp.Flow's
 
 # generate HTTP Flows
 httpflows = []
 flow_count = 0
-for f in flows.flowdict.itervalues():
+for f in flowbuilder.flowdict.itervalues():
     try:
         httpflows.append(http.Flow(f))
         flow_count += 1
