@@ -18,7 +18,6 @@ from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
 parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
-#parser.add_option('-d', '--directory', dest="dirname", default='flowdata', help="Directory to write flow files to.")
 options, args = parser.parse_args()
 
 # setup logs
@@ -40,6 +39,7 @@ dispatcher = PacketDispatcher(flowbuilder)
 # parse pcap file
 pcap.ParsePcap(dispatcher, filename=inputfile)
 flowbuilder.finish()
+
 # flowbuilder.flowdict now contains tcp.Flow's
 
 # generate HTTP Flows
