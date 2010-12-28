@@ -57,7 +57,7 @@ def combine_pairs(pairs, flow):
     return pairs + flow.pairs
 pairs = reduce(combine_pairs, httpflows, [])
 
-logging.info("Flow=%d HTTP=%d" % (flow_count,len(pairs)))
+logging.info("Flows=%d. HTTP pairs=%d" % (flow_count,len(pairs)))
 # parse HAR stuff
 session = httpsession.HTTPSession(pairs)
 
