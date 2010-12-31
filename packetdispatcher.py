@@ -1,22 +1,22 @@
-'''
-
-'''
-
 import dpkt
-import tcp as tcpmodule
+import tcp
+import udp
 
 class PacketDispatcher:
     '''
     takes a series of dpkt.Packet's and calls callbacks based on their type
 
     For each packet added, picks it apart into its transport-layer packet type
-    and --calls a registered callback, which usually just adds it to a handler
-    for that type--.
+    and adds it to an appropriate handler object. Automatically creates handler
+    objects for now.
 
-    Actually, for now it's just going to add it to a tcp.FlowBuilder
+    Members:
+    flowbuilder = tcp.FlowBuilder
+    udp = udp.Processor
     '''
-    def __init__(self, flowbuilder):
-        self.tcpflowbuilder= flowbuilder
+    def __init__(self):
+        self.tcp = tcp.FlowBuilder()
+        self.udp = udp.Processor()
     def add(self, ts, buf, eth):
         '''
         ts = dpkt timestamp
@@ -29,11 +29,11 @@ class PacketDispatcher:
             ip = eth.data
             # if it's TCP
             if isinstance(ip.data, dpkt.tcp.TCP):
-                tcp = ip.data
-                tcppkt = tcpmodule.Packet(ts, buf, eth, ip, tcp)
-                self.tcpflowbuilder.add(tcppkt)
-        # if it's UDP...
-        elif isinstance(eth.data, dpkt.udp.UDP):
-            #TODO: handle UDP packets
-            pass
-
+                tcppkt = tcp.Packet(ts, buf, eth, ip, ip.data)
+                self.tcp.add(tcppkt)
+            # if it's UDP...
+            elif isinstance(ip.data, dpkt.udp.UDP):
+                self.udp.add(ts, ip.data)
+    def finish(self):
+        #This is a hack, until tcp.Flow no longer has to be `finish()`ed
+        self.tcp.finish()

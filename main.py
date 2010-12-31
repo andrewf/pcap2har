@@ -32,20 +32,16 @@ else:
 
 logging.info("Processing %s", inputfile)
 
-# set up packet dispatcher
-flowbuilder = tcp.FlowBuilder()
-dispatcher = PacketDispatcher(flowbuilder)
-
 # parse pcap file
+dispatcher = PacketDispatcher()
 pcap.ParsePcap(dispatcher, filename=inputfile)
-flowbuilder.finish()
-
-# flowbuilder.flowdict now contains tcp.Flow's
+dispatcher.finish()
+# dispatcher.tcp.flowdict now contains tcp.Flow's
 
 # generate HTTP Flows
 httpflows = []
 flow_count = 0
-for f in flowbuilder.flowdict.itervalues():
+for f in dispatcher.tcp.flowdict.itervalues():
     try:
         httpflows.append(http.Flow(f))
         flow_count += 1

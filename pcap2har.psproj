@@ -69,50 +69,58 @@ FileName=$[Project-Path]BeautifulSoup.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]dpkt_http_replacement.py
+FileName=$[Project-Path]dns.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]har.py
+FileName=$[Project-Path]dpkt_http_replacement.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]httpsession.py
+FileName=$[Project-Path]har.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]main.py
+FileName=$[Project-Path]httpsession.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]mediatype.py
+FileName=$[Project-Path]main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]orderedset.py
+FileName=$[Project-Path]mediatype.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]pcap.py
+FileName=$[Project-Path]orderedset.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]pcaputil.py
+FileName=$[Project-Path]packetdispatcher.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]sortedcollection.py
+FileName=$[Project-Path]pcap.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]tcpseq.py
+FileName=$[Project-Path]pcaputil.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node13]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]sortedcollection.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node14]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]tcpseq.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node15]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]test.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=14
+Count=16
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode
@@ -126,7 +134,7 @@ ScriptName=main.py
 Description=Current main test program
 EngineType=peRemote
 ReinitializeBeforeRun=TRUE
-Parameters=fhs_ncomp.pcap output.har
+Parameters=../pcap2har/dns_requests.pcap output.har
 WorkingDir=$[ActiveScript-Dir]
 WriteOutputToFile=FALSE
 OutputFileName=$[ActiveScript-NoExt].log
