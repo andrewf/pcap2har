@@ -25,7 +25,8 @@ class PacketDispatcher:
         '''
         #decide based on pkt.data
         # if it's IP...
-        if isinstance(eth.data, dpkt.ip.IP):
+        if (isinstance(eth.data, dpkt.ip.IP) or
+                    isinstance(eth.data, dpkt.ip6.IP6)):
             ip = eth.data
             # if it's TCP
             if isinstance(ip.data, dpkt.tcp.TCP):
