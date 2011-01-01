@@ -58,10 +58,14 @@ FileName=$[Project-Path]tcp\flow.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node4]
 ClassName=TProjectFileNode
+FileName=$[Project-Path]tcp\flowbuilder.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node5]
+ClassName=TProjectFileNode
 FileName=$[Project-Path]tcp\packet.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes]
-Count=5
+Count=6
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
@@ -119,8 +123,12 @@ FileName=$[Project-Path]tcpseq.py
 ClassName=TProjectFileNode
 FileName=$[Project-Path]test.py
 
+[Project\ChildNodes\Node0\ChildNodes\Node16]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]udp.py
+
 [Project\ChildNodes\Node0\ChildNodes]
-Count=16
+Count=17
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode
