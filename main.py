@@ -17,7 +17,9 @@ import tcp
 from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
-parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
+parser = optparse.OptionParser(
+    usage='usage: %prog inputfile outputfile [options]'
+)
 options, args = parser.parse_args()
 
 # setup logs
@@ -36,7 +38,6 @@ logging.info("Processing %s", inputfile)
 dispatcher = PacketDispatcher()
 pcap.ParsePcap(dispatcher, filename=inputfile)
 dispatcher.finish()
-# dispatcher.tcp.flowdict now contains tcp.Flow's
 
 # generate HTTP Flows
 httpflows = []
