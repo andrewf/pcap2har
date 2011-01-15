@@ -17,11 +17,13 @@ import tcp
 from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
-parser = optparse.OptionParser(usage='usage: %prog inputfile outputfile [options]')
+parser = optparse.OptionParser(
+    usage='usage: %prog inputfile outputfile [options]'
+)
 options, args = parser.parse_args()
 
 # setup logs
-logging.basicConfig(filename='pcap2har.log', level=logging.DEBUG)
+logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
 
 # get filenames, or bail out with usage error
 if len(args) == 2:
@@ -36,26 +38,15 @@ logging.info("Processing %s", inputfile)
 dispatcher = PacketDispatcher()
 pcap.ParsePcap(dispatcher, filename=inputfile)
 dispatcher.finish()
-# dispatcher.tcp.flowdict now contains tcp.Flow's
 
-# generate HTTP Flows
-httpflows = []
-flow_count = 0
-for f in dispatcher.tcp.flowdict.itervalues():
-    try:
-        httpflows.append(http.Flow(f))
-        flow_count += 1
-    except http.Error as error:
-        logging.warning(error)
+dns = dispatcher.udp.dns
+for q in dns.queries.itervalues():
+    print '(%d) %s' % (dns.num_queries(q.name), q.name), '\tduration:', dns.get_resolution_time(q.name)
 
-# put all message pairs in one list
-def combine_pairs(pairs, flow):
-    return pairs + flow.pairs
-pairs = reduce(combine_pairs, httpflows, [])
-
-logging.info("Flows=%d. HTTP pairs=%d" % (flow_count,len(pairs)))
 # parse HAR stuff
-session = httpsession.HTTPSession(pairs)
+session = httpsession.HTTPSession(dispatcher)
+
+logging.info("Flows=%d. HTTP pairs=%d" % (len(session.flows),len(session.entries)))
 
 with open(outputfile, 'w') as f:
     json.dump(session, f, cls=har.JsonReprEncoder, indent=2, encoding='utf8')

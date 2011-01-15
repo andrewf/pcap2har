@@ -23,7 +23,10 @@ class Processor:
         '''
         #check for DNS
         if pkt.sport == 53 or pkt.dport == 53:
-            dnspkt = dpkt.dns.DNS()
-            self.dns.add(ts, dnspkt)
+            try:
+                dnspkt = dpkt.dns.DNS(pkt.data)
+                self.dns.add(dns.Packet(ts, dnspkt))
+            except dpkt.Error:
+                log.warning('UDP packet on port 53 was not DNS')
         else:
             log.warning('unkown UDP ports: %d->%d' % (pkt.sport, pkt.dport))
