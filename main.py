@@ -39,16 +39,11 @@ dispatcher = PacketDispatcher()
 pcap.ParsePcap(dispatcher, filename=inputfile)
 dispatcher.finish()
 
-dns = dispatcher.udp.dns
-for q in dns.queries.itervalues():
-    print '(%d) %s' % (dns.num_queries(q.name), q.name), '\tduration:', dns.get_resolution_time(q.name)
-
 # parse HAR stuff
-session = httpsession.HTTPSession(dispatcher)
+session = httpsession.HttpSession(dispatcher)
 
 logging.info("Flows=%d. HTTP pairs=%d" % (len(session.flows),len(session.entries)))
 
+#write the HAR file
 with open(outputfile, 'w') as f:
     json.dump(session, f, cls=har.JsonReprEncoder, indent=2, encoding='utf8')
-
-pass

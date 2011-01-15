@@ -1,7 +1,6 @@
 import gzip
 import zlib
 import cStringIO
-#import dpkt.http this is buggy
 import dpkt_http_replacement as dpkt_http
 import http
 from mediatype import MediaType

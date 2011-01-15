@@ -167,7 +167,7 @@ class PageTracker(object):
             'pageTimings': PageTracker.default_page_timings
             } for page_str, page_ref, start_time, title in srt]
 
-class HTTPSession(object):
+class HttpSession(object):
     '''
     Represents all http traffic from within a pcap.
 
