@@ -104,3 +104,11 @@ class Processor:
             return self.by_hostname[hostname][-1].duration()
         except KeyError:
             return None
+    def num_queries(self, hostname):
+        '''
+        Returns the number of DNS requests for that name
+        '''
+        try:
+            return len(self.by_hostname[hostname])
+        except KeyError:
+            return 0

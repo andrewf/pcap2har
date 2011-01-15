@@ -39,7 +39,7 @@ class Flow:
                 pairable_responses.extend( [None for i in range(len(requests) - len(pairable_responses))] )
             # if there are more responses, we would just ignore them anyway, which zip does for us
             # create MessagePair's
-            connected = False
+            connected = False # whether connection timing has been taken into account in a request yet
             for req, resp in zip(requests, responses):
                 if not req:
                     logging.warning("Request is missing.")

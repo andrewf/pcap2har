@@ -5,6 +5,7 @@ HAR file.
 
 from datetime import datetime
 from pcaputil import ms_from_timedelta, ms_from_dpkt_time
+import http
 
 class Page:
     '''
@@ -81,6 +82,14 @@ class Entry:
             },
             'cache': {},
         }
+    def add_dns(self, dns_query):
+        '''
+        Adds the info from the dns.Query to this entry
+
+        Assumes that the dns.Query represents the DNS query required to make
+        the request. Or something like that.
+        '''
+        self.time_dnsing = ms_from_dpkt_time(dns_query.duration())
 
 class UserAgentTracker(object):
     '''
@@ -165,35 +174,55 @@ class HTTPSession(object):
     Members:
     * user_agents = UserAgentTracker
     * user_agent = most-used user-agent in the flow
+    * flows = [http.Flow]
     * entries = [Entry], all http request/response pairs
     '''
-    def __init__(self, messages):
+    def __init__(self, packetdispatcher):
         '''
-        Parses http.MessagePairs to get http info out, in preparation for
-        writing it to a HAR file.
+        parses http.flows from packetdispatcher, and parses those for HAR info
         '''
+        # parse http flows
+        self.flows= []
+        for flow in packetdispatcher.tcp.flowdict.itervalues():
+            try:
+                self.flows.append(http.Flow(flow))
+            except http.Error as error:
+                log.warning(error)
+        # combine the messages into a list
+        pairs = reduce(lambda p, f: p+f.pairs, self.flows, [])
         # set-up
         self.user_agents = UserAgentTracker()
         self.page_tracker = PageTracker()
         self.entries = []
-        by_ref = {}
-        # iter through messages
-        for msg in messages:
-            # if msg.request has a user-agent, add it to our list
+        # iter through messages and do important stuff
+        for msg in pairs:
             entry = Entry(msg.request, msg.response)
-
+            # if msg.request has a user-agent, add it to our list
             if 'user-agent' in msg.request.msg.headers:
                 self.user_agents.add(msg.request.msg.headers['user-agent'])
-
             # if msg.request has a referer, keep track of that, too
-            entry.page_ref = self.page_tracker.getref(msg.request.msg.headers.get('referer', ''), entry.startedDateTime)
-
-            # parse basic data in the pair, add it to the list
+            entry.page_ref = self.page_tracker.getref(
+                msg.request.msg.headers.get('referer', ''),
+                entry.startedDateTime)
+            # add it to the list
             self.entries.append(entry)
-
         # Sort the entries on start
         self.entries.sort(lambda x,y: int(x.ts_start - y.ts_start))
         self.user_agent = self.user_agents.dominant_user_agent()
+        # handle DNS AFTER sorting
+        # this algo depends on first appearance of a name
+        # being the actual first mention
+        names_mentioned = set()
+        dns = packetdispatcher.udp.dns
+        for entry in self.entries:
+            name = entry.request.host
+            # if this is the first time seeing the name
+            if name not in names_mentioned:
+                if name in dns.by_hostname:
+                    # TODO: handle multiple DNS queries for now just use last one
+                    entry.add_dns(dns.by_hostname[name][-1])
+                names_mentioned.add(name)
+
     def json_repr(self):
         '''
         return a JSON serializable python object representation of self.
