@@ -11,6 +11,11 @@ from packetdispatcher import PacketDispatcher
 
 def ParsePcap(dispatcher, filename=None, reader=None):
     '''
+    Parses the passed pcap file or pcap reader.
+
+    Adds the packets to the PacketDispatcher. Keeps a list
+
+    Args:
     dispatcher = PacketDispatcher
     reader = pcaputil.ModifiedReader or None
     filename = filename of pcap file or None
@@ -29,14 +34,15 @@ def ParsePcap(dispatcher, filename=None, reader=None):
     packet_count = 1 # start from 1 like Wireshark
     errors = [] # store errors for later inspection
     try:
-        for record in pcap:
-            ts = record[0]  # timestamp
-            buf = record[1] # frame data
-            hdr = record[2] # libpcap header
+        for packet in pcap:
+            ts = packet[0]  # timestamp
+            buf = packet[1] # frame data
+            hdr = packet[2] # libpcap header
             # discard incomplete packets
             if hdr.caplen != hdr.len:
                 # log packet number so user can diagnose issue in wireshark
                 log.warning('ParsePcap: discarding incomplete packet, # %d' % packet_count)
+                continue
             # parse packet
             try:
                 # handle SLL packets, thanks Libo
@@ -51,49 +57,9 @@ def ParsePcap(dispatcher, filename=None, reader=None):
             except dpkt.Error as e:
                 errors.append((record, e, packet_count))
                 log.warning(e)
+            packet_count += 1
     except dpkt.dpkt.NeedData as error:
         log.warning(error)
         log.warning('A packet in the pcap file was too short, '
                     'debug_pkt_count=%d' % debug_pkt_count)
         self.errors.append((None, error))
-
-def TCPFlowsFromFile(filename):
-    '''
-    helper function for getting a TCPFlowAccumulator from a pcapfilename.
-    Filename in, flows out. Intended to be used from the console.
-    '''
-    f = open(filename,'rb')
-    reader = ModifiedReader(f)
-    return TCPFlowAccumulator(reader)
-
-def verify_file(filename):
-    '''
-    attempts to construct packets from all the packets in the file, to
-    verify their validity, or dpkt's ability to interpret them. Intended to be
-    used from the console.
-    '''
-    f = open(filename,'rb')
-    reader = dpkt.pcap.Reader(f)
-    i = 0
-    for pkt in reader:
-        try:
-            eth = dpkt.ethernet.Ethernet(pkt[1])
-        except dpkt.UnpackError:
-            print 'error in packet #', i
-            raise # let it hit the console
-        i += 1
-
-def WriteTCPFlowsFromFile(filename):
-    '''
-    takes a filename, parses the file with TCPFlowAccumulator, and writes the
-    contents of all the flows to a directory "filename.d"
-    '''
-    flows = TCPFlowsFromFile(filename)
-    output_dir = filename + ".d"
-    # get clean directory
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.mkdir(output_dir)
-    # write out data
-    for i, f in enumerate(flows.flowdict.itervalues()):
-        f.writeout_data(os.path.join(output_dir, str(i)))

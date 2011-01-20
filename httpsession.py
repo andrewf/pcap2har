@@ -12,9 +12,9 @@ class Page:
     Represents a page entry in the HAR. Requests refer to one by its url.
 
     Members:
-    title = string, the title of the page or the url
-    startedDateTime = datetime.datetime
-    url = the page url
+    * title = string, the title of the page or the url
+    * startedDateTime = datetime.datetime
+    * url = the page url
     '''
     def __init__(self, url, title, startedDateTime):
         self.title = title
