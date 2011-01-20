@@ -64,8 +64,12 @@ FileName=$[Project-Path]tcp\flowbuilder.py
 ClassName=TProjectFileNode
 FileName=$[Project-Path]tcp\packet.py
 
+[Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes\Node6]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]tcp\seq.py
+
 [Project\ChildNodes\Node0\ChildNodes\Node1\ChildNodes]
-Count=6
+Count=7
 
 [Project\ChildNodes\Node0\ChildNodes\Node2]
 ClassName=TProjectFileNode
@@ -97,38 +101,26 @@ FileName=$[Project-Path]mediatype.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]orderedset.py
+FileName=$[Project-Path]packetdispatcher.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]packetdispatcher.py
+FileName=$[Project-Path]pcap.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]pcap.py
+FileName=$[Project-Path]pcaputil.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]pcaputil.py
-
-[Project\ChildNodes\Node0\ChildNodes\Node13]
-ClassName=TProjectFileNode
 FileName=$[Project-Path]sortedcollection.py
 
-[Project\ChildNodes\Node0\ChildNodes\Node14]
-ClassName=TProjectFileNode
-FileName=$[Project-Path]tcpseq.py
-
-[Project\ChildNodes\Node0\ChildNodes\Node15]
-ClassName=TProjectFileNode
-FileName=$[Project-Path]test.py
-
-[Project\ChildNodes\Node0\ChildNodes\Node16]
+[Project\ChildNodes\Node0\ChildNodes\Node13]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]udp.py
 
 [Project\ChildNodes\Node0\ChildNodes]
-Count=17
+Count=14
 
 [Project\ChildNodes\Node1]
 ClassName=TProjectRunConfiguationsNode

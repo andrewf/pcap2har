@@ -52,14 +52,14 @@ def ms_from_dpkt_time(td):
     return int(td * 1000) # um, I guess
 
 class ModifiedReader(object):
-    """
+    '''
     A copy of the dpkt pcap Reader. The only change is that the iterator
     yields the pcap packet header as well, so it's possible to check the true
     frame length, among other things.
-    
+
     stolen from pyper.
-    """
-    
+    '''
+
     def __init__(self, fileobj):
         self.name = fileobj.name
         self.fd = fileobj.fileno()
@@ -78,16 +78,16 @@ class ModifiedReader(object):
 
     def fileno(self):
         return self.fd
-    
+
     def datalink(self):
         return self.__fh.linktype
-    
+
     def setfilter(self, value, optimize=1):
         return NotImplementedError
 
     def readpkts(self):
         return list(self)
-    
+
     def dispatch(self, cnt, callback, *args):
         if cnt > 0:
             for i in range(cnt):
@@ -99,7 +99,7 @@ class ModifiedReader(object):
 
     def loop(self, callback, *args):
         self.dispatch(0, callback, *args)
-    
+
     def __iter__(self):
         self.__f.seek(dpkt.pcap.FileHdr.__hdr_len__)
         while 1:

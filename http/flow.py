@@ -69,14 +69,14 @@ def gather_messages(MessageClass, tcpdir):
     Attempts to construct a series of MessageClass objects from the data. The
     basic idea comes from pyper's function, HTTPFlow.analyze.gather_messages.
     Args:
-    MessageClass = class, Request or Response
-    tcpdir = TCPDirection, from which will be extracted the data
+    * MessageClass = class, Request or Response
+    * tcpdir = TCPDirection, from which will be extracted the data
     Returns:
     [MessageClass]
 
     If the first message fails to construct, the flow is considered to be
     invalid. After that, all messages are stored and returned. The end of the
-    data or an invalid message. This is designed to handle partially valid HTTP
+    data is an invalid message. This is designed to handle partially valid HTTP
     flows semi-gracefully: if the flow is bad, the application probably bailed
     on it after that anyway.
     '''
