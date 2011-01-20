@@ -1,7 +1,7 @@
 from tcp.direction import Direction
 import tcp
 
-import tcpseq as seq # hopefully no name collisions
+import seq # hopefully no name collisions
 from sortedcollection import SortedCollection
 from dpkt.tcp import *
 import logging as log
