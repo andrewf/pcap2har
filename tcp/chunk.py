@@ -1,4 +1,4 @@
-import tcpseq as seq
+import seq
 
 class Chunk:
     '''

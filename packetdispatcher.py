@@ -11,8 +11,8 @@ class PacketDispatcher:
     objects for now.
 
     Members:
-    flowbuilder = tcp.FlowBuilder
-    udp = udp.Processor
+    * flowbuilder = tcp.FlowBuilder
+    * udp = udp.Processor
     '''
     def __init__(self):
         self.tcp = tcp.FlowBuilder()

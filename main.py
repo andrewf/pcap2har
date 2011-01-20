@@ -18,7 +18,7 @@ from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
 parser = optparse.OptionParser(
-    usage='usage: %prog inputfile outputfile [options]'
+    usage='usage: %prog inputfile outputfile'
 )
 options, args = parser.parse_args()
 
