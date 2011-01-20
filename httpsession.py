@@ -5,21 +5,8 @@ HAR file.
 
 from datetime import datetime
 from pcaputil import ms_from_timedelta, ms_from_dpkt_time
+from pagetracker import PageTracker
 import http
-
-class Page:
-    '''
-    Represents a page entry in the HAR. Requests refer to one by its url.
-
-    Members:
-    title = string, the title of the page or the url
-    startedDateTime = datetime.datetime
-    url = the page url
-    '''
-    def __init__(self, url, title, startedDateTime):
-        self.title = title
-        self.startedDateTime = startedDateTime # python datetime
-        self.url = url
 
 class Entry:
     '''
@@ -119,54 +106,6 @@ class UserAgentTracker(object):
             # return the string from the key-value pair with the biggest value
             return max(self.data.iteritems(), key=lambda v: v[1])[0]
 
-def page2title(page):
-    return page
-
-class PageTracker(object):
-    '''
-    Keeps track of the pages that show up the pcap.
-
-    Members:
-    pages = {page_url(string): [pageref(string), start_time (datetime), title]}
-    '''
-    def __init__(self):
-        self.pages = dict() # {page: [ref_string, start_time, title]}
-
-    def getref(self, page, start_time):
-        '''
-        Either finds or creates the pageref for the page. Returns the pageref,
-        and adds the page to self.pages.
-
-        Arguments:
-        page = url
-        start_time = datetime
-        '''
-        if page not in self.pages:
-            idx = len(self.pages)
-            self.pages[page] = ['pageref_%d'%(idx), start_time, page2title(page)]
-        else:
-            if self.pages[page][1] > start_time:
-                self.pages[page][1] = start_time
-        return self.pages[page][0]
-
-    # hack until we feel like actually calculating these, if it's possible
-    default_page_timings = {
-        'onContentLoad': -1,
-        'onLoad': -1
-    }
-
-    def json_repr(self):
-        '''
-        return a JSON serializable python object representation of self.
-        '''
-        srt = sorted([(s,r,t,l) for s,(r,t,l) in self.pages.items()], key=lambda x: x[2])
-        return [{
-            'startedDateTime': start_time.isoformat() + 'Z', # assume time is in UTC
-            'id': page_ref,
-            'title': title if title != '' else 'top',
-            'pageTimings': PageTracker.default_page_timings
-            } for page_str, page_ref, start_time, title in srt]
-
 class HttpSession(object):
     '''
     Represents all http traffic from within a pcap.
@@ -201,9 +140,7 @@ class HttpSession(object):
             if 'user-agent' in msg.request.msg.headers:
                 self.user_agents.add(msg.request.msg.headers['user-agent'])
             # if msg.request has a referer, keep track of that, too
-            entry.page_ref = self.page_tracker.getref(
-                msg.request.msg.headers.get('referer', ''),
-                entry.startedDateTime)
+            entry.page_ref = self.page_tracker.getref(entry)
             # add it to the list
             self.entries.append(entry)
         # Sort the entries on start
