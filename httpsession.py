@@ -133,6 +133,10 @@ class HttpSession(object):
         self.user_agents = UserAgentTracker()
         self.page_tracker = PageTracker()
         self.entries = []
+        # sort pairs on request.ts_connect
+        pairs.sort(
+            key=lambda pair: pair.request.ts_connect
+        )
         # iter through messages and do important stuff
         for msg in pairs:
             entry = Entry(msg.request, msg.response)
@@ -143,8 +147,6 @@ class HttpSession(object):
             entry.page_ref = self.page_tracker.getref(entry)
             # add it to the list
             self.entries.append(entry)
-        # Sort the entries on start
-        self.entries.sort(lambda x,y: int(x.ts_start - y.ts_start))
         self.user_agent = self.user_agents.dominant_user_agent()
         # handle DNS AFTER sorting
         # this algo depends on first appearance of a name
