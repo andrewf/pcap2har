@@ -5,6 +5,8 @@ class Page(object):
     * url
     * startedDateTime
     * title = url
+    * child_urls = set([string]), urls that have referred to this page, directly
+      or indirectly. If anything refers to them, they also belong on this page
     '''
     def __init__(self, pageref, entry):
         '''
@@ -12,6 +14,7 @@ class Page(object):
         '''
         self.pageref = pageref
         self.url = entry.request.url
+        self.child_urls = set()
         self.startedDateTime = entry.startedDateTime
         self.title= self.url
     def json_repr(self):
@@ -49,16 +52,39 @@ class PageTracker(object):
         req = entry.request # all the interesting stuff is in the request
         if 'referer' in req.msg.headers:
             referer = req.msg.headers['referer']
-            if referer in self.pages:
-                return self.pages[referer].pageref
+            page = self.lookup_referrer(referer)
+            # if this request refers to an URL we know about
+            if page:
+                page.child_urls.add(entry.request.url)
+                return page.pageref
             else:
-                # make new page for this entry; assume referer is
-                self.pages[referer] = Page(self.new_id(), entry)
-                return self.pages[referer].pageref
+                # make new page for this entry
+                return self.new_ref(entry, referer)
         else:
             # make a new page; supposedly other entries will refer to it
-            self.pages[entry.request.url] = Page(self.new_id(), entry)
-            return self.pages[entry.request.url].pageref
+            return self.new_ref(entry, entry.request.url)
+    def new_ref(self, entry, referrer):
+        '''
+        Internal. Wraps creating a new pages entry. Returns the new ref
+        '''
+        if referrer not in self.pages:
+            self.pages[referrer] = Page(self.new_id(), entry)
+            return self.pages[referrer].pageref
+        else:
+            raise RuntimeError(
+                'tried to get new pageref for existing referrer. Logic error')
+    def lookup_referrer(self, referrer):
+        '''
+        Finds and returns a page that the referrer points to, or returns None
+        '''
+        if referrer in self.pages:
+            return self.pages[referrer]
+        # look through the pages, in child_urls and return first match
+        for page in self.pages.itervalues():
+            if referrer in page.child_urls:
+                return page
+        # if we got here, we can't find the page
+        return None
     def new_id(self):
         result = 'page_%d' % self.page_number
         self.page_number += 1
