@@ -2,21 +2,48 @@ class Page(object):
     '''
     Members:
     * pageref
-    * url
+    * url = string or None
+    * root_document = entry or None 
     * startedDateTime
+    * user_agent = string, UA of program requesting page
     * title = url
-    * child_urls = set([string]), urls that have referred to this page, directly
+    * referrers = set([string]), urls that have referred to this page, directly
       or indirectly. If anything refers to them, they also belong on this page
+    * last_entry = entry, the last entry to be added 
     '''
-    def __init__(self, pageref, entry):
+    def __init__(self, pageref, entry, is_root_doc=True):
         '''
         Creates new page with passed ref and data from entry
         '''
+        # basics
         self.pageref = pageref
-        self.url = entry.request.url
-        self.child_urls = set()
+        self.referrers = set()
         self.startedDateTime = entry.startedDateTime
-        self.title= self.url
+        self.last_entry = entry
+        self.user_agent = entry.request.msg.headers.get('user-agent')
+        # url, title, etc.
+        if is_root_doc:
+            self.root_document = entry
+            self.url = entry.request.url
+            self.title = self.url
+        else:
+            # if this is a hanging referrer
+            if 'referer' in entry.request.msg.headers:
+                # save it so other entries w/ the same referrer will come here
+                self.referrers.add(entry.request.msg.headers['referer'])
+            self.url = None # can't guarantee it's the referrer
+            self.title = 'unknown title'
+    def has_referrer(self, ref):
+        '''
+        Returns whether the passed ref might be referring to an url in this page
+        '''
+        return ref == self.url or ref in self.referrers
+    def add(self, entry):
+        '''
+        Adds the entry to the page's data, whether it likes it or not
+        '''
+        self.last_entry = entry
+        self.referrers.add(entry.request.url)
     def json_repr(self):
         return {
             'id': self.pageref,
@@ -31,6 +58,18 @@ default_page_timings = {
     'onLoad': -1
 }
 
+def is_root_document(entry):
+    '''
+    guesses whether the entry is from the root document of a web page
+    '''
+    # guess based on media type
+    mt = entry.response.mediaType
+    if mt.type == 'text':
+        if mt.subtype in ['html', 'xhtml', 'xml']:
+            # probably...
+            return True
+    return False
+
 class PageTracker(object):
     '''
     Groups http entries into pages.
@@ -42,52 +81,50 @@ class PageTracker(object):
     '''
     def __init__(self):
         self.page_number = 0 # used for generating pageids
-        self.pages = {} # {referer_url: Page}
+        self.pages = [] # [Page]
     def getref(self, entry):
         '''
         takes an Entry and returns a pageref.
 
         Entries must be passed in by order of arrival
         '''
+        # extract interesting information all at once
         req = entry.request # all the interesting stuff is in the request
-        if 'referer' in req.msg.headers:
-            referer = req.msg.headers['referer']
-            page = self.lookup_referrer(referer)
-            # if this request refers to an URL we know about
-            if page:
-                page.child_urls.add(entry.request.url)
-                return page.pageref
-            else:
-                # make new page for this entry
-                return self.new_ref(entry, referer)
+        referrer = req.msg.headers.get('referer')
+        user_agent = req.msg.headers.get('user-agent')
+        matched_page = None # page we added the request to
+        # look through pages for matches
+        for page in self.pages:
+            # check user agent
+            if page.user_agent and user_agent:
+                if page.user_agent != user_agent:
+                    # user agents don't match, so entry can't be part of this page
+                    continue
+            # check referrers
+            if referrer and page.has_referrer(referrer):
+                # assume it's part of the page for now
+                matched_page = page
+                break
+        # if we found a page, return it
+        if matched_page:
+            matched_page.add(entry)
+            return matched_page.pageref
         else:
-            # make a new page; supposedly other entries will refer to it
-            return self.new_ref(entry, entry.request.url)
-    def new_ref(self, entry, referrer):
+            # make a new page
+            return self.new_ref(entry)
+    def new_ref(self, entry):
         '''
         Internal. Wraps creating a new pages entry. Returns the new ref
         '''
-        if referrer not in self.pages:
-            self.pages[referrer] = Page(self.new_id(), entry)
-            return self.pages[referrer].pageref
-        else:
-            raise RuntimeError(
-                'tried to get new pageref for existing referrer. Logic error')
-    def lookup_referrer(self, referrer):
-        '''
-        Finds and returns a page that the referrer points to, or returns None
-        '''
-        if referrer in self.pages:
-            return self.pages[referrer]
-        # look through the pages, in child_urls and return first match
-        for page in self.pages.itervalues():
-            if referrer in page.child_urls:
-                return page
-        # if we got here, we can't find the page
-        return None
+        new_page = Page(
+            self.new_id(),
+            entry,
+            is_root_document(entry))
+        self.pages.append(new_page)
+        return new_page.pageref
     def new_id(self):
         result = 'page_%d' % self.page_number
         self.page_number += 1
         return result
     def json_repr(self):
-        return sorted(self.pages.itervalues())
+        return sorted(self.pages)
