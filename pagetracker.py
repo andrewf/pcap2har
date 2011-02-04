@@ -98,11 +98,9 @@ class PageTracker(object):
             # check user agent
             if page.user_agent and user_agent:
                 if page.user_agent != user_agent:
-                    # user agents don't match, so entry can't be part of this page
                     continue
             # check referrers
             if referrer and page.has_referrer(referrer):
-                # assume it's part of the page for now
                 matched_page = page
                 break
         # if we found a page, return it
