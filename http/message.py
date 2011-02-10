@@ -19,9 +19,9 @@ class Message:
         msgclass = dpkt.http.Request/Response
         '''
         # attempt to parse as http. let exception fall out to caller
-        self.msg = msgclass(tcpdir.data[pointer:])
+        self.msg = msgclass(tcpdir.data()[pointer:])
         self.data = self.msg.data
-        self.data_consumed = (len(tcpdir.data) - pointer) - len(self.data)
+        self.data_consumed = (len(tcpdir.data()) - pointer) - len(self.data)
         # calculate sequence numbers of data
         self.seq_start = tcpdir.byte_to_seq(pointer)
         self.seq_end = tcpdir.byte_to_seq(pointer + self.data_consumed) # past-the-end

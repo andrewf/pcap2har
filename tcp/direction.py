@@ -10,7 +10,8 @@ class Direction:
     * flow = tcp.Flow, the flow to which the direction belongs
     * seq_start = the sequence number at which the data starts, after finish()
     * arrival_data = [(seq_num, pkt)] or SortedCollection
-    * final_arrival_data = SortedCollection, after calculate_final_arrivals()
+    * final_arrival_data = SortedCollection([(seq_num, pkt)]) after
+      calculate_final_arrivals()
     '''
     def __init__(self, flow):
         '''
@@ -20,13 +21,10 @@ class Direction:
         flow = tcp.Flow
         '''
         self.arrival_data = []
-        self.final_arrival_data = None #
+        self.final_arrival_data = None
         self.closed_cleanly = False # until proven true
         self.chunks = []
         self.flow = flow
-        # the seq number of the first byte of data,
-        # valid after finish() if self.data is valid
-        self.seq_start= None
     def add(self, pkt):
         '''
         Merge the packet into the first chunk it overlaps with. If data was
@@ -62,19 +60,30 @@ class Direction:
             # nothing overlapped with the packet
             # we need a new chunk
             self.new_chunk(pkt)
-
+    def data(self):
+        '''
+        returns the TCP data, as far as it has been determined.
+        '''
+        if self.chunks:
+            return self.chunks[0].data
+        else:
+            return ''
+    def seq_start(self):
+        '''
+        starting sequence number, as far as we can tell now.
+        '''
+        if self.chunks:
+            return self.chunks[0].seq_start
+        elif self.packets:
+            return self.packets[0].seq_start
+        else:
+            return None # or raise?
     def finish(self):
         '''
         Notifies the direction that there are no more packets coming. This means
         that self.data can be decided upon, and arrival_data can be converted to
         a SortedCollection for querying
         '''
-        # set data to the data from the first chunk, if there is one
-        if self.chunks:
-            self.data = self.chunks[0].data
-            self.seq_start = self.chunks[0].seq_start
-        else:
-            self.data = ''
         self.arrival_data = SortedCollection(self.arrival_data, key=lambda v: v[0])
     def calculate_final_arrivals(self):
         '''
@@ -119,8 +128,9 @@ class Direction:
         Converts the passed byte index to a sequence number in the stream. byte
         is assumed to be zero-based.
         '''
-        if self.seq_start:
-            return byte + self.seq_start
+        seq_start = self.seq_start()
+        if seq_start is not None:
+            return byte + seq_start
         else:
             return byte + self.flow.first_packet.seq
 

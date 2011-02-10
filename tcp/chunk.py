@@ -20,7 +20,7 @@ class Chunk:
         details of the operation's success or failure.
 
         Args:
-        pkt = TCPPacket or TCPChunk
+        new = TCPPacket or TCPChunk
         new_seq_callback = callable(int) or None
 
         new_seq_callback is a function that will be called with sequence numbers
