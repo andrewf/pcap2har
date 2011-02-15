@@ -14,7 +14,9 @@ class MediaType(object):
     # possibly with '-'s. Then the optional parameter list: names are same type
     # of string as the types above, values are pretty much anything but another
     # semicolon
-    mediatype_re = re.compile(r'^([\w\-+]+)/([\w\-+]+)((?:\s*;\s*[\w\-]+=[^;]+)*)\s*$')
+    mediatype_re = re.compile(
+        r'^([\w\-+.]+)/([\w\-+.]+)((?:\s*;\s*[\w\-]+=[^;]+)*)\s*$'
+    )
     # RE for parsing name-value pairs
     nvpair_re = re.compile(r'^\s*([\w\-]+)=([^;\s]+)\s*$')
     # constructor
@@ -54,4 +56,8 @@ class MediaType(object):
 # test mimetype parsing
 if __name__ == '__main__':
     m = MediaType('application/rdf+xml ;charset=ISO-5591-1   ;foo=bar ')
+    print m.mimeType()
+    print m.params['charset']
+    print m.params['foo']
+    m = MediaType('image/vnd.microsoft.icon')
     print m.mimeType()
