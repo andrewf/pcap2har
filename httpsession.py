@@ -7,6 +7,7 @@ from datetime import datetime
 from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 from pagetracker import PageTracker
 import http
+import logging as log
 
 class Entry:
     '''
