@@ -7,7 +7,7 @@ class Direction:
     Represents data moving in one direction in a TCP flow.
 
     Members:
-    * finished = bool. Indicates whether more packets should be expected
+    * finished = bool. Indicates whether more packets should be expected.
     * chunks = [tcp.Chunk], sorted by seq_start
     * flow = tcp.Flow, the flow to which the direction belongs
     * arrival_data = SortedCollection([(seq_num, pkt)])
@@ -51,19 +51,16 @@ class Direction:
         for i, chunk in enumerate(self.chunks):
             overlapped, (front, back) = chunk.merge(pkt,
                                              self.create_merge_callback(pkt))
-            if overlapped: # if the data overlapped
-                # if data was added on the back and there is a chunk after this
+            if overlapped:
+                # check if this packet bridged the gap between two chunks
                 if back and i < (len(self.chunks)-1):
-                    # try to merge with the next chunk as well
-                    # in case that packet bridged the gap
                     overlapped2, result2 = chunk.merge(self.chunks[i+1])
-                    if overlapped2: # if that merge worked
-                        # data should only be added to back
+                    if overlapped2:
                         assert( (not result2[0]) and (result2[1]))
-                        del self.chunks[i+1] # remove the now-redundant chunk
+                        del self.chunks[i+1]
                 # if this is the main data chunk, calc final arrival
                 if self.seq_start and chunk.seq_start == self.seq_start:
-                    if back: # new data must be added to add new final arrival point
+                    if back:
                         self.final_arrival_data.insert((self.final_arrival_pointer, pkt.ts))
                     if not self.final_data_chunk:
                         self.final_data_chunk = chunk
@@ -97,12 +94,14 @@ class Direction:
             elif self is self.flow.rev:
                 return self.flow.handshake[1].seq + 1
             else:
-                raise RuntimeError("holy crap, tcp.Direction has a flow it doesn't belong to")
+                raise RuntimeError(
+                    "holy crap, tcp.Direction has a flow it doesn't belong to")
         elif self.finished:
             if self.chunks:
                 return self.chunks[0].seq_start
             else:
-                log.warning('getting seq_start from finished tcp.Direction with no handshake and no data')
+                log.warning('getting seq_start from finished tcp.Direction '
+                            'with no handshake and no data')
                 return None
         else:
             return None
@@ -125,9 +124,8 @@ class Direction:
             self.final_data_chunk = chunk
             self.final_arrival_pointer = chunk.seq_end
             self.final_arrival_data.insert((pkt.seq, pkt.ts))
+        # it would be better to insert the packet sorted here
         self.chunks.append(chunk)
-        self.sort_chunks() # it would be better to insert the packet sorted
-    def sort_chunks(self):
         self.chunks.sort(key=lambda chunk: chunk.seq_start)
     def create_merge_callback(self, pkt):
         '''
@@ -140,25 +138,22 @@ class Direction:
     def byte_to_seq(self, byte):
         '''
         Converts the passed byte index to a sequence number in the stream. byte
-        is assumed to be zero-based.
+        is assumed to be zero-based. Returns None if seq_start is None
         '''
-        # TODO better hand case where seq_start is None
+        # TODO better handle case where seq_start is None
         seq_start = self.seq_start
         if seq_start is not None:
             return byte + seq_start
         else:
-            return byte + self.flow.first_packet.seq
+            return None
     def seq_arrival(self, seq_num):
         '''
         returns the packet in which the specified sequence number first arrived.
-        self.arrival_data must be a SortedCollection at this point;
-        self.finish() must have been called.
         '''
         return self.arrival_data.find_le(seq_num)[1]
     def seq_final_arrival(self, seq_num):
         '''
-        Returns the time at which the seq number had fully arrived. Will
-        calculate final_arrival_data if it has not been already. Only callable
-        after self.finish()
+        Returns the time at which the seq number had fully arrived, that is,
+        when all the data before it had also arrived.
         '''
         return self.final_arrival_data.find_le(seq_num)[1]
