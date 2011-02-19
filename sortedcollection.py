@@ -2,6 +2,8 @@
 This class originates from http://code.activestate.com/recipes/577197-sortedcollection/
 
 It is distributed under the MIT license. Copyright Raymond Hettinger 16 April 2010
+
+Modified by Andrew Fleenor 18 Feb 2011
 '''
 
 
@@ -157,6 +159,8 @@ class SortedCollection(object):
         If multiple key-values are equal, return the leftmost.
 
         '''
+        if not self._items:
+            raise ValueError('find_le: No items found')
         i = bisect_left(self._keys, key)
         if i == len(self._keys):
             return self._items[-1]
