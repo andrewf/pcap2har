@@ -8,6 +8,7 @@ from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 from pagetracker import PageTracker
 import http
 import logging as log
+import settings
 
 class Entry:
     '''
@@ -29,7 +30,7 @@ class Entry:
     def __init__(self, request, response):
         self.request = request
         self.response = response
-        self.page_ref = ''
+        self.pageref = None
         self.ts_start = int(request.ts_connect*1000)
         self.startedDateTime = datetime.fromtimestamp(request.ts_connect)
         endedDateTime = datetime.fromtimestamp(response.ts_end)
@@ -54,8 +55,7 @@ class Entry:
         '''
         return a JSON serializable python object representation of self.
         '''
-        return {
-            'pageref': self.page_ref,
+        d = {
             'startedDateTime': self.startedDateTime.isoformat() + 'Z', # assume time is in UTC
             'time': self.total_time,
             'request': self.request,
@@ -70,6 +70,9 @@ class Entry:
             },
             'cache': {},
         }
+        if self.pageref:
+            d['pageref'] = self.pageref
+        return d
     def add_dns(self, dns_query):
         '''
         Adds the info from the dns.Query to this entry
@@ -132,7 +135,10 @@ class HttpSession(object):
         pairs = reduce(lambda p, f: p+f.pairs, self.flows, [])
         # set-up
         self.user_agents = UserAgentTracker()
-        self.page_tracker = PageTracker()
+        if settings.process_pages:
+            self.page_tracker = PageTracker()
+        else:
+            self.page_tracker = None
         self.entries = []
         # sort pairs on request.ts_connect
         pairs.sort(
@@ -145,7 +151,8 @@ class HttpSession(object):
             if 'user-agent' in msg.request.msg.headers:
                 self.user_agents.add(msg.request.msg.headers['user-agent'])
             # if msg.request has a referer, keep track of that, too
-            entry.page_ref = self.page_tracker.getref(entry)
+            if self.page_tracker:
+                entry.page_ref = self.page_tracker.getref(entry)
             # add it to the list
             self.entries.append(entry)
         self.user_agent = self.user_agents.dominant_user_agent()
@@ -167,7 +174,7 @@ class HttpSession(object):
         '''
         return a JSON serializable python object representation of self.
         '''
-        return {
+        d = {
             'log': {
                 'version' : '1.1',
                 'creator': {
@@ -178,7 +185,9 @@ class HttpSession(object):
                     'name': self.user_agent,
                     'version': 'mumble'
                 },
-                'pages': self.page_tracker,
                 'entries': sorted(self.entries, key=lambda x: x.ts_start)
             }
         }
+        if self.page_tracker:
+            d['pages'] = self.page_tracker
+        return d

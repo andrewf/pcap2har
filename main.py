@@ -14,13 +14,18 @@ import httpsession
 import har
 import json
 import tcp
+import settings
 from packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
 parser = optparse.OptionParser(
     usage='usage: %prog inputfile outputfile'
 )
+parser.add_option('--no-pages', action="store_false", dest="pages", default=True)
 options, args = parser.parse_args()
+
+# copy options to settings module
+settings.process_pages = options.pages
 
 # setup logs
 logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
