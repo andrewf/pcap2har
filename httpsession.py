@@ -152,7 +152,7 @@ class HttpSession(object):
                 self.user_agents.add(msg.request.msg.headers['user-agent'])
             # if msg.request has a referer, keep track of that, too
             if self.page_tracker:
-                entry.page_ref = self.page_tracker.getref(entry)
+                entry.pageref = self.page_tracker.getref(entry)
             # add it to the list
             self.entries.append(entry)
         self.user_agent = self.user_agents.dominant_user_agent()
@@ -189,5 +189,5 @@ class HttpSession(object):
             }
         }
         if self.page_tracker:
-            d['pages'] = self.page_tracker
+            d['log']['pages'] = self.page_tracker
         return d
