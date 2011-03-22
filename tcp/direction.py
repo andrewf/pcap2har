@@ -108,9 +108,17 @@ class Direction:
     def finish(self):
         '''
         Notifies the direction that there are no more packets coming. This means
-        that self.data can be decided upon.
+        that self.data can be decided upon. Also calculates final_arrival for
+        any packets that arrived while seq_start was None
         '''
         self.finished = True
+        # calculate final_arrival
+        if not self.final_arrival_data:
+            peak_time = 0.0
+            for vertex in self.arrival_data:
+                if vertex[1].ts > peak_time:
+                    peak_time = vertex[1].ts
+                    self.final_arrival_data.insert((vertex[0], vertex[1].ts))
         if self.chunks and not self.final_data_chunk:
             self.final_data_chunk = self.chunks[0]
     def new_chunk(self, pkt):
