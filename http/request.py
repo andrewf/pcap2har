@@ -21,3 +21,4 @@ class Request(http.Message):
         self.fullurl = fullurl.geturl()
         self.url, frag = urlparse.urldefrag(self.fullurl)
         self.query = urlparse.parse_qs(uri.query, keep_blank_values=True)
+
