@@ -48,7 +48,7 @@ def ParsePcap(dispatcher, filename=None, reader=None):
                 # handle SLL packets, thanks Libo
                 dltoff = dpkt.pcap.dltoff
                 if pcap.dloff == dltoff[dpkt.pcap.DLT_LINUX_SLL]:
-                    eth = dpkt.sll.SLL(pkt[1])
+                    eth = dpkt.sll.SLL(buf)
                 # otherwise, for now, assume Ethernet
                 else:
                     eth = dpkt.ethernet.Ethernet(buf)
