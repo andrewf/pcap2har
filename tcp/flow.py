@@ -34,7 +34,7 @@ class Flow:
         if len(self.packets): # if we have received packets before...
             if self.packets[-1].ts > pkt.ts: # if this one is out of order...
                 # error out
-                raise ValueError("packet added to TCPFlow out of "
+                raise ValueError("packet added to tcp.Flow out of "
                                  "chronological order")
         self.packets.append(pkt)
         # look out for handshake
