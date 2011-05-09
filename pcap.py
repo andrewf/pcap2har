@@ -62,4 +62,4 @@ def ParsePcap(dispatcher, filename=None, reader=None):
         log.warning(error)
         log.warning('A packet in the pcap file was too short, '
                     'debug_pkt_count=%d' % debug_pkt_count)
-        self.errors.append((None, error))
+        errors.append((None, error))
