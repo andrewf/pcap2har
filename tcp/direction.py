@@ -60,7 +60,9 @@ class Direction:
                         del self.chunks[i+1]
                 # if this is the main data chunk, calc final arrival
                 if self.seq_start and chunk.seq_start == self.seq_start:
-                    if back:
+                    if front: # packet was first in stream but just now arriving
+                        self.final_arrival_data.insert((self.seq_start, pkt.ts))
+                    if back: # usual case
                         self.final_arrival_data.insert((self.final_arrival_pointer, pkt.ts))
                     if not self.final_data_chunk:
                         self.final_data_chunk = chunk
@@ -132,7 +134,7 @@ class Direction:
             self.final_data_chunk = chunk
             self.final_arrival_pointer = chunk.seq_end
             self.final_arrival_data.insert((pkt.seq, pkt.ts))
-        # it would be better to insert the packet sorted here
+        # it would be better to insert the chunk sorted here
         self.chunks.append(chunk)
         self.chunks.sort(key=lambda chunk: chunk.seq_start)
     def create_merge_callback(self, pkt):
@@ -158,10 +160,16 @@ class Direction:
         '''
         returns the packet in which the specified sequence number first arrived.
         '''
-        return self.arrival_data.find_le(seq_num)[1]
+        try:
+            return self.arrival_data.find_le(seq_num)[1]
+        except ValueError:
+            return None
     def seq_final_arrival(self, seq_num):
         '''
         Returns the time at which the seq number had fully arrived, that is,
         when all the data before it had also arrived.
         '''
-        return self.final_arrival_data.find_le(seq_num)[1]
+        try:
+            return self.final_arrival_data.find_le(seq_num)[1]
+        except:
+            return None
