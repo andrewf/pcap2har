@@ -131,6 +131,8 @@ class HttpSession(object):
                 self.flows.append(http.Flow(flow))
             except http.Error as error:
                 log.warning(error)
+            except dpkt.dpkt.Error as error:
+                log.warning(error)
         # combine the messages into a list
         pairs = reduce(lambda p, f: p+f.pairs, self.flows, [])
         # set-up
