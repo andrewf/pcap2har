@@ -55,11 +55,13 @@ def ParsePcap(dispatcher, filename=None, reader=None):
                 dispatcher.add(ts, buf, eth)
             # catch errors from this packet
             except dpkt.Error as e:
-                errors.append((record, e, packet_count))
-                log.warning(e)
+                errors.append((packet, e, packet_count))
+                log.warning('Error parsing packet: %s. On packet #%s' %
+                            (e, packet_count))
             packet_count += 1
     except dpkt.dpkt.NeedData as error:
         log.warning(error)
         log.warning('A packet in the pcap file was too short, '
                     'debug_pkt_count=%d' % debug_pkt_count)
         errors.append((None, error))
+    
