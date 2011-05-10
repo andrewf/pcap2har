@@ -25,7 +25,11 @@ def ParsePcap(dispatcher, filename=None, reader=None):
     '''
     if filename:
         f = open(filename, 'rb')
-        pcap = ModifiedReader(f)
+        try:
+            pcap = ModifiedReader(f)
+        except dpkt.dpkt.Error as e:
+            log.warning('failed to parse pcap file %s' % filename)
+            return
     elif reader:
         pcap = reader
     else:

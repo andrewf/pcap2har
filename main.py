@@ -33,7 +33,7 @@ logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
 # get filenames, or bail out with usage error
 if len(args) == 2:
     inputfile, outputfile = args[0:2]
-if len(args) == 1:
+elif len(args) == 1:
     inputfile = args[0]
     outputfile = inputfile+'.har'
 else:
