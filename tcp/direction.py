@@ -1,6 +1,6 @@
 from sortedcollection import SortedCollection
 import tcp
-from operator import itemgetter
+from operator import itemgetter, attrgetter
 
 class Direction:
     '''
@@ -29,7 +29,7 @@ class Direction:
         self.arrival_data = SortedCollection(key=itemgetter(0))
         self.final_arrival_data = SortedCollection(key=itemgetter(0))
         self.final_arrival_pointer = None
-        self.chunks = []
+        self.chunks = SortedCollection(key=attrgetter('seq_start'))
         self.final_data_chunk = None
     def add(self, pkt):
         '''
@@ -57,7 +57,7 @@ class Direction:
                     overlapped2, result2 = chunk.merge(self.chunks[i+1])
                     if overlapped2:
                         assert( (not result2[0]) and (result2[1]))
-                        del self.chunks[i+1]
+                        self.chunks.remove(i+1)
                 # if this is the main data chunk, calc final arrival
                 if self.seq_start and chunk.seq_start == self.seq_start:
                     if front: # packet was first in stream but just now arriving
@@ -134,9 +134,7 @@ class Direction:
             self.final_data_chunk = chunk
             self.final_arrival_pointer = chunk.seq_end
             self.final_arrival_data.insert((pkt.seq, pkt.ts))
-        # it would be better to insert the chunk sorted here
-        self.chunks.append(chunk)
-        self.chunks.sort(key=lambda chunk: chunk.seq_start)
+        self.chunks.insert(chunk)
     def create_merge_callback(self, pkt):
         '''
         Returns a function that will serve as a callback for Chunk. It will
