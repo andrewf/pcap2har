@@ -10,6 +10,7 @@ class Message:
     * ts_start: when Message started arriving (dpkt timestamp)
     * ts_end: when Message had fully arrived (dpkt timestamp)
     * body_raw: body before compression is taken into account
+    * tcpdir: The tcp.Direction corresponding to the HTTP message
     '''
     def __init__(self, tcpdir, pointer, msgclass):
         '''
@@ -18,6 +19,7 @@ class Message:
         pointer = position within tcpdir.data to start parsing from. byte index
         msgclass = dpkt.http.Request/Response
         '''
+        self.tcpdir = tcpdir
         # attempt to parse as http. let exception fall out to caller
         self.msg = msgclass(tcpdir.data[pointer:])
         self.data = self.msg.data
