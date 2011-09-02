@@ -91,6 +91,7 @@ class Flow:
             self.flush_packets()
         self.fwd.finish()
         self.rev.finish()
+
     def samedir(self, pkt):
         '''
         returns whether the passed packet is in the same direction as the
