@@ -50,7 +50,11 @@ def HTTPResponseJsonRepr(self):
         'mimeType': self.mimeType
     }
     if self.text:
-        content['text'] = self.text.encode('utf8') # must transcode to utf8
+        if self.encoding:
+            content['text'] = self.text
+            content['encoding'] = self.encoding
+        else:
+            content['text'] = self.text.encode('utf8') # must transcode to utf-8
     return {
         'status': int(self.msg.status),
         'statusText': self.msg.reason,

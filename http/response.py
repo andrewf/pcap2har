@@ -6,6 +6,7 @@ import http
 from mediatype import MediaType
 import logging as log
 #from http import DecodingError # exception class from parent module
+from base64 import encodestring as b64encode
 
 # try to import UnicodeDammit from BeautifulSoup
 # otherwise, set the name to None
@@ -21,7 +22,8 @@ class Response(http.Message):
     * mediaType: mediatype.MediaType, constructed from content-type
     * mimeType: string mime type of returned data
     * body: http decoded body data, otherwise unmodified
-    * text: body text, unicoded if possible, or None if the body is not text
+    * text: body text, unicoded if possible, otherwise base64 encoded
+    * encoding: 'base64' if self.text is base64 encoded binary data, else None
     * compression: string, compression type
     * original_encoding: string, original text encoding/charset/whatever
     '''
@@ -90,6 +92,7 @@ class Response(http.Message):
         self.mediaType is valid.
         '''
         self.text = None
+        self.encoding = None
         # if the body is text
         if (self.mediaType and
             (self.mediaType.type == 'text' or
@@ -134,4 +137,7 @@ class Response(http.Message):
                     self.text = u or None
         else:
             # body is not text
-            self.text = None
+            # base64 encode it and set self.encoding
+            # TODO: check with list that this is right
+            self.text = b64encode(self.body)
+            self.encoding = 'base64'
