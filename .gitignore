@@ -1,3 +1,5 @@
 .gitignore
 *.pyc
 pcap2har.log
+tests/*.har
+tests/*.log
