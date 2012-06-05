@@ -4,10 +4,12 @@ HAR file.
 '''
 
 from datetime import datetime
+import dpkt
+import logging as log
+
 from pcaputil import ms_from_timedelta, ms_from_dpkt_time
 from pagetracker import PageTracker
 import http
-import logging as log
 import settings
 
 class Entry:
