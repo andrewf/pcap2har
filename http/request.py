@@ -1,7 +1,7 @@
 import urlparse
 #import dpkt.http this is buggy
 import dpkt_http_replacement as dpkt_http
-import http
+import message as http
 
 class Request(http.Message):
     '''
@@ -21,4 +21,3 @@ class Request(http.Message):
         self.fullurl = fullurl.geturl()
         self.url, frag = urlparse.urldefrag(self.fullurl)
         self.query = urlparse.parse_qs(uri.query, keep_blank_values=True)
-

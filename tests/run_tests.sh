@@ -17,16 +17,16 @@ do
 				rm $pcap.new.har
 				continue
 			else
-				echo "$pcap produced different har, log in $pcap.log"
+				echo "  $pcap produced different har, log in $pcap.log"
 			fi
 		else
-			echo "no har file to compare with for $pcap"
+			echo "  no har file to compare with for $pcap"
 			continue
 		fi
 	else
-		echo "$pcap failed."
+		echo "  $pcap failed."
 	fi
-	echo "see log in $pcap.log"
+	echo "  see log in $pcap.log"
 	cp pcap2har.log $pcap.log
 done
 

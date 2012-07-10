@@ -45,10 +45,11 @@ http.Request.json_repr = HTTPRequestJsonRepr
 
 def HTTPResponseJsonRepr(self):
     content =  {
-        'size': len(self.body),
-        'compression': len(self.body) - len(self.raw_body),
+        'size': self.body_length,
         'mimeType': self.mimeType
     }
+    if self.compression_amount is not None:
+        content['compression'] = self.compression_amount
     if self.text:
         if self.encoding:
             content['text'] = self.text
@@ -61,7 +62,7 @@ def HTTPResponseJsonRepr(self):
         'httpVersion': self.msg.version,
         'cookies': [],
         'headersSize': -1,
-        'bodySize': len(self.msg.body),
+        'bodySize': self.raw_body_length,
         'redirectURL': self.msg.headers['location'] if 'location' in self.msg.headers else '',
         'headers': header_json_repr(self.msg.headers),
         'content': content,

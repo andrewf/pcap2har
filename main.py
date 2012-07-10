@@ -21,11 +21,17 @@ from packetdispatcher import PacketDispatcher
 parser = optparse.OptionParser(
     usage='usage: %prog inputfile outputfile'
 )
-parser.add_option('--no-pages', action="store_false", dest="pages", default=True)
+parser.add_option('--no-pages', action='store_false',
+                  dest='pages', default=True)
+parser.add_option('-d', '--drop-bodies', action='store_true',
+                  dest='drop_bodies', default=False)
+parser.add_option('-r', '--resource-usage', action='store_true',
+                  dest='resource_usage', default=False)
 options, args = parser.parse_args()
 
 # copy options to settings module
 settings.process_pages = options.pages
+settings.drop_bodies = options.drop_bodies
 
 # setup logs
 logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
@@ -52,6 +58,15 @@ session = httpsession.HttpSession(dispatcher)
 
 logging.info("Flows=%d. HTTP pairs=%d" % (len(session.flows),len(session.entries)))
 
+def print_rusage():
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if sys.platform == 'darwin':
+        rss /= 1024  # Mac OSX returns rss in bytes, not KiB
+    print 'max_rss:', rss, 'KiB'
+
 #write the HAR file
 with open(outputfile, 'w') as f:
     json.dump(session, f, cls=har.JsonReprEncoder, indent=2, encoding='utf8', sort_keys=True)
+
+if options.resource_usage:
+    print_rusage()

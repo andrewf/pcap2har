@@ -1,6 +1,7 @@
 from sortedcollection import SortedCollection
-import tcp
+import chunk as tcp
 from operator import itemgetter, attrgetter
+import logging as log
 
 class Direction:
     '''
@@ -8,12 +9,13 @@ class Direction:
 
     Members:
     * finished = bool. Indicates whether more packets should be expected.
-    * chunks = [tcp.Chunk], sorted by seq_start
+    * chunks = [tcp.Chunk] or None, sorted by seq_start. None iff data
+      has been cleared.
     * flow = tcp.Flow, the flow to which the direction belongs
     * arrival_data = SortedCollection([(seq_num, pkt)])
     * final_arrival_data = SortedCollection([(seq_num, ts)])
     * final_data_chunk = Chunk or None, the chunk that contains the final data,
-      only after seq_start is valid
+      only after seq_start is valid and before clear_data
     * final_arrival_pointer = the end sequence number of data that has
       completely arrived
     '''
@@ -43,6 +45,9 @@ class Direction:
         '''
         if self.finished:
             raise RuntimeError('tried to add packets to a finished tcp.Direction')
+        if self.chunks is None:
+            raise RuntimeError('Tried to add packet to a tcp.Direction'
+                               'that has been cleared')
         # discard packets with no payload. we don't care about them here
         if pkt.data == '':
             return
@@ -78,6 +83,8 @@ class Direction:
         '''
         returns the TCP data, as far as it has been determined.
         '''
+        if self.chunks is None:
+            return None
         if self.final_data_chunk:
             return self.final_data_chunk.data
         else:
@@ -85,6 +92,20 @@ class Direction:
                 return '' # no data was ever added
             else:
                 return None # just don't know at all
+
+    def clear_data(self):
+        '''
+        Drop data to save memory
+        '''
+        # we need to make sure we've grabbed any timing info we can
+        if not self.finished:
+            log.warn('tried to clear data on an unfinished tcp.Direction')
+        # clear the list, to make sure all chunks are orphaned to make it
+        # easier for GC. hopefully.
+        del self.chunks[:]
+        self.chunks = None
+        self.final_data_chunk = None
+
     @property
     def seq_start(self):
         '''
@@ -102,6 +123,8 @@ class Direction:
             if self.chunks:
                 return self.chunks[0].seq_start
             else:
+                # this will also occur when a Direction with no handshake
+                # has been cleared.
                 log.warning('getting seq_start from finished tcp.Direction '
                             'with no handshake and no data')
                 return None

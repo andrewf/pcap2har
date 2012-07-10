@@ -2,9 +2,11 @@ import gzip
 import zlib
 import cStringIO
 import dpkt_http_replacement as dpkt_http
-import http
+import common as http
+import message
 from mediatype import MediaType
 import logging as log
+import settings
 #from http import DecodingError # exception class from parent module
 from base64 import encodestring as b64encode
 
@@ -15,7 +17,7 @@ try:
 except ImportError:
     UnicodeDammit = None
 
-class Response(http.Message):
+class Response(message.Message):
     '''
     HTTP response.
     Members:
@@ -26,19 +28,44 @@ class Response(http.Message):
     * encoding: 'base64' if self.text is base64 encoded binary data, else None
     * compression: string, compression type
     * original_encoding: string, original text encoding/charset/whatever
+    * body_length: int, length of body, uncompressed if possible/applicable
+    * compression_amount: int or None, difference between lengths of
+      uncompressed data and raw data. None if no compression or we're not sure
     '''
     def __init__(self, tcpdir, pointer):
-        http.Message.__init__(self, tcpdir, pointer, dpkt_http.Response)
-        # uncompress body if necessary
-        self.handle_compression()
+        message.Message.__init__(self, tcpdir, pointer, dpkt_http.Response)
         # get mime type
         if 'content-type' in self.msg.headers:
             self.mediaType = MediaType(self.msg.headers['content-type'])
         else:
             self.mediaType = MediaType('application/x-unknown-content-type')
         self.mimeType = self.mediaType.mimeType()
-        # try to get out unicode
-        self.handle_text()
+        # first guess at body size. handle_compression might
+        # modify it, but this has to be before clear_body
+        self.body_length = len(self.msg.body)
+        self.compression_amount = None
+        self.text = None
+        # handle body stuff
+        if settings.drop_bodies:
+            self.clear_body()
+        else:
+            # uncompress body if necessary
+            self.handle_compression()
+            # try to get out unicode
+            self.handle_text()
+
+    def clear_body(self):
+        '''
+        Clear response body to save memory
+
+        Sets to None the body attributes of self and self.msg, and
+        maybe tcpdir, too. Of course, they can't be GC'd if there
+        are any other references.
+        '''
+        self.body = self.raw_body = None
+        self.msg.body = None
+        self.tcpdir.clear_data() # clear stream data, not timing, etc
+
     def handle_compression(self):
         '''
         Sets self.body to the http decoded response data. Sets compression to
@@ -75,6 +102,10 @@ class Response(http.Message):
             elif encoding == 'identity':
                 # no compression
                 self.body = self.raw_body
+            elif 'sdch' in encoding:
+                # ignore sdch, a Google proposed modification to HTTP/1.1
+                # not in RFC 2616.
+                self.body = self.raw_body
             else:
                 # I'm pretty sure the above are the only allowed encoding types
                 # see RFC 2616 sec 3.5 (http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.5)
@@ -83,6 +114,9 @@ class Response(http.Message):
             # no compression
             self.compression = 'identity'
             self.body = self.raw_body
+        self.body_length = len(self.body)
+        # comp_amount is 0 when no compression, which may or may not be to spec
+        self.compression_amount = self.body_length - len(self.raw_body)
 
     def handle_text(self):
         '''
@@ -141,3 +175,9 @@ class Response(http.Message):
             # TODO: check with list that this is right
             self.text = b64encode(self.body)
             self.encoding = 'base64'
+
+    @property
+    def raw_body_length(self):
+        if self.compression_amount is None:
+            return self.body_length
+        return self.body_length - self.compression_amount

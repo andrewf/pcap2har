@@ -1,7 +1,8 @@
 import logging
 import dpkt
-import http
-from http import Request, Response
+import common as http
+from request import Request
+from response import Response
 
 class Flow:
     '''

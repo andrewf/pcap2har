@@ -34,8 +34,8 @@ class Entry:
         self.response = response
         self.pageref = None
         self.ts_start = int(request.ts_connect*1000)
-        self.startedDateTime = datetime.fromtimestamp(request.ts_connect)
-        endedDateTime = datetime.fromtimestamp(response.ts_end)
+        self.startedDateTime = datetime.utcfromtimestamp(request.ts_connect)
+        endedDateTime = datetime.utcfromtimestamp(response.ts_end)
         self.total_time = ms_from_timedelta(
             endedDateTime - self.startedDateTime # plus connection time, someday
         )
