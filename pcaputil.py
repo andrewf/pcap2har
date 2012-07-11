@@ -108,3 +108,24 @@ class ModifiedReader(object):
             hdr = self.__ph(buf)
             buf = self.__f.read(hdr.caplen)
             yield (hdr.tv_sec + (hdr.tv_usec / 1000000.0), buf, hdr)
+
+class FakeStream(object):
+    '''
+    Emulates a tcp.Direction with a predetermined data stream.
+
+    Useful for debugging http message classes.
+    '''
+    def __init__(self, data):
+        self.data = data
+    def byte_to_seq(self, n):
+        return n
+    def seq_final_arrival(self, n):
+        return None
+
+class FakeFlow(object):
+    '''
+    Emulates a tcp.Flow, with two FakeStream's.
+    '''
+    def __init__(self, fwd, rev):
+        self.fwd = fwd
+        self.rev = rev

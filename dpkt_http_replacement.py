@@ -13,8 +13,8 @@ def parse_headers(f):
     d = {}
     while 1:
         line = f.readline()
-        if not line:
-            raise dpkt.NeedData('premature end of headers')
+        # regular dpkt checks for premature end of headers
+        # but that's too picky
         line = line.strip()
         if not line:
             break
@@ -29,7 +29,7 @@ def parse_headers(f):
             d[k] = v
     return d
 
-def parse_body(f, headers):
+def parse_body(f, version, headers):
     """Return HTTP body parsed from a file object, given HTTP header dict."""
     if headers.get('transfer-encoding', '').lower() == 'chunked':
         l = []
@@ -59,7 +59,22 @@ def parse_body(f, headers):
             raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
     else:
         # XXX - need to handle HTTP/0.9
-        body = ''
+        # BTW, this function is not called if status code is 204 or 304
+        if version == '1.0':
+            # we can assume that there are no further
+            # responses on this stream, since 1.0 doesn't
+            # support keepalive
+            body = f.read()
+        elif (version == '1.1' and
+              headers.get('connection', None) == 'close'):
+            # sender has said they won't send anything else.
+            body = f.read()
+        # there's also the case where other end sends connection: close,
+        # but we don't have the architecture to handle that.
+        else:
+            # we don't really know what to do
+            #print 'returning body as empty string:', version, headers
+            body = ''
     return body
 
 class Message(dpkt.Packet):
@@ -84,8 +99,11 @@ class Message(dpkt.Packet):
         f = cStringIO.StringIO(buf)
         # Parse headers
         self.headers = parse_headers(f)
-        # Parse body
-        self.body = parse_body(f, self.headers)
+        # Parse body, unless we know there isn't one
+        if not (getattr(self, 'status', None) in ('204', '304')):
+            self.body = parse_body(f, self.version, self.headers)
+        else:
+            self.body = ''
         # Save the rest
         self.data = f.read()
 
