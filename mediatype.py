@@ -15,7 +15,7 @@ class MediaType(object):
     # of string as the types above, values are pretty much anything but another
     # semicolon
     mediatype_re = re.compile(
-        r'^([\w\-+.]+)/([\w\-+.]+)((?:\s*;\s*[\w\-]+=[^;]+)*)\s*$'
+        r'^([\w\-+.]+)/([\w\-+.]+)((?:\s*;\s*[\w\-]+=[^;]+)*);?\s*$'
     )
     # RE for parsing name-value pairs
     nvpair_re = re.compile(r'^\s*([\w\-]+)=([^;\s]+)\s*$')

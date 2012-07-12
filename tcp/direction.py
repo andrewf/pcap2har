@@ -2,7 +2,7 @@ from sortedcollection import SortedCollection
 import chunk as tcp
 from operator import itemgetter, attrgetter
 import logging as log
-from pcap2har import settings
+import settings
 import packet
 import logging
 
