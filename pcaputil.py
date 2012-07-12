@@ -3,7 +3,12 @@ Various small, useful functions which have no other home.
 '''
 
 import dpkt
-from socket import inet_ntoa
+
+# use inet_ntoa to process IPs, if available (it's not on AppEngine)
+try:
+    from socket import inet_ntoa
+except ImportError:
+    inet_ntoa = lambda ip: ip
 
 def friendly_tcp_flags(flags):
     '''
