@@ -4,7 +4,6 @@ from operator import itemgetter, attrgetter
 import logging as log
 import settings
 import packet
-import logging
 
 class Direction:
     '''
@@ -212,7 +211,7 @@ class Direction:
         for chunk in self.chunks[1:]:
             gap = chunk.seq_start - prev_chunk.seq_end
             if gap > 0:
-                logging.info('Padding %d missing bytes at %d',
+                log.info('Padding %d missing bytes at %d',
                              gap, prev_chunk.seq_end)
                 first_chunk_pkt = self.seq_arrival(chunk.seq_start)
                 chunk_ts = first_chunk_pkt.ts
