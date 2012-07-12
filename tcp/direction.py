@@ -60,8 +60,9 @@ class Direction:
                 # check if this packet bridged the gap between two chunks
                 if back and i < (len(self.chunks)-1):
                     overlapped2, result2 = chunk.merge(self.chunks[i+1])
+                    # if the gap was bridged, the later chunk is obsolete
+                    # so get rid of it.
                     if overlapped2:
-                        assert( (not result2[0]) and (result2[1]))
                         self.chunks.remove(i+1)
                 # if this is the main data chunk, calc final arrival
                 if self.seq_start and chunk.seq_start == self.seq_start:
@@ -102,7 +103,7 @@ class Direction:
             log.warn('tried to clear data on an unfinished tcp.Direction')
         # clear the list, to make sure all chunks are orphaned to make it
         # easier for GC. hopefully.
-        del self.chunks[:]
+        self.chunks.clear()
         self.chunks = None
         self.final_data_chunk = None
 
