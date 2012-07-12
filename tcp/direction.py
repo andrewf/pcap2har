@@ -206,6 +206,8 @@ class Direction:
 
     def pad_missing_data(self):
         '''Pad missing data in the flow with zero bytes.'''
+        if not self.chunks:
+            return
         prev_chunk = self.chunks[0]
         for chunk in self.chunks[1:]:
             gap = chunk.seq_start - prev_chunk.seq_end

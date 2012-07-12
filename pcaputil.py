@@ -61,8 +61,16 @@ class ModifiedReader(object):
     '''
 
     def __init__(self, fileobj):
-        self.name = fileobj.name
-        self.fd = fileobj.fileno()
+        if hasattr(fileobj, 'name'):
+          self.name = fileobj.name
+        else:
+          self.name = '<unknown>'
+
+        if hasattr(fileobj, 'fileno'):
+          self.fd = fileobj.fileno()
+        else:
+          self.fd = None
+
         self.__f = fileobj
         buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__)
         self.__fh = dpkt.pcap.FileHdr(buf)
