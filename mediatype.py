@@ -15,7 +15,7 @@ class MediaType(object):
     # of string as the types above, values are pretty much anything but another
     # semicolon
     mediatype_re = re.compile(
-        r'^([\w\-+.]+)/([\w\-+.]+)((?:\s*;\s*[\w\-]+=[^;]+)*)\s*$'
+        r'^([\w\-+.]+)/([\w\-+.]+)((?:\s*;\s*[\w\-]+=[^;]+)*);?\s*$'
     )
     # RE for parsing name-value pairs
     nvpair_re = re.compile(r'^\s*([\w\-]+)=([^;\s]+)\s*$')
@@ -25,6 +25,12 @@ class MediaType(object):
         Args:
         data = string, the media type string
         '''
+        if not data:
+            log.warning('Setting empty media type to x-unknown-content-type')
+            self.type = 'application'
+            self.subtype = 'x-unknown-content-type'
+            params = {}
+            return
         match = self.mediatype_re.match(data)
         if match:
             # get type/subtype

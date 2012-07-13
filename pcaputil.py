@@ -3,7 +3,12 @@ Various small, useful functions which have no other home.
 '''
 
 import dpkt
-from socket import inet_ntoa
+
+# use inet_ntoa to process IPs, if available (it's not on AppEngine)
+try:
+    from socket import inet_ntoa
+except ImportError:
+    inet_ntoa = lambda ip: ip
 
 def friendly_tcp_flags(flags):
     '''
@@ -61,8 +66,16 @@ class ModifiedReader(object):
     '''
 
     def __init__(self, fileobj):
-        self.name = fileobj.name
-        self.fd = fileobj.fileno()
+        if hasattr(fileobj, 'name'):
+          self.name = fileobj.name
+        else:
+          self.name = '<unknown>'
+
+        if hasattr(fileobj, 'fileno'):
+          self.fd = fileobj.fileno()
+        else:
+          self.fd = None
+
         self.__f = fileobj
         buf = self.__f.read(dpkt.pcap.FileHdr.__hdr_len__)
         self.__fh = dpkt.pcap.FileHdr(buf)

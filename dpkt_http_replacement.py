@@ -7,6 +7,8 @@ fix the bug where a body is parsed for a request that shouldn't have a body."""
 
 import cStringIO
 import dpkt
+import logging
+import settings
 
 def parse_headers(f):
     """Return dict of HTTP headers parsed from a file object."""
@@ -49,14 +51,23 @@ def parse_body(f, version, headers):
                 l.append(buf)
             else:
                 break
-        if not found_end:
+        if settings.strict_http_parse_body and not found_end:
             raise dpkt.NeedData('premature end of chunked body')
         body = ''.join(l)
     elif 'content-length' in headers:
-        n = int(headers['content-length'])
+        # Ethan K B: Have observed malformed 0,0 content lengths
+        try:
+            n = int(headers['content-length'])
+        except ValueError:
+            logging.warn('HTTP content-length "%s" is invalid, assuming 0' %
+                         headers['content-length'])
+            n = 0
         body = f.read(n)
         if len(body) != n:
-            raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
+          logging.warn('HTTP content-length mismatch: expected %d, got %d', n,
+                       len(body))
+          if settings.strict_http_parse_body:
+              raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
     else:
         # XXX - need to handle HTTP/0.9
         # BTW, this function is not called if status code is 204 or 304
@@ -167,7 +178,7 @@ class Response(Message):
         f = cStringIO.StringIO(buf)
         line = f.readline()
         l = line.strip().split(None, 2)
-        if len(l) < 2 or not l[0].startswith(self.__proto) or not l[1].isdigit():
+        if len(l) < 3 or not l[0].startswith(self.__proto) or not l[1].isdigit():
             raise dpkt.UnpackError('invalid response: %r' % line)
         self.version = l[0][len(self.__proto)+1:]
         self.status = l[1]
