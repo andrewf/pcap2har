@@ -31,6 +31,21 @@ def parse_headers(f):
             d[k] = v
     return d
 
+
+def parse_length(s, base=10):
+    """Take a string and convert to int (not long), returning 0 if invalid"""
+    try:
+        n = int(s, base)
+        # int() can actually return long, which can't be used in file.read()
+        if isinstance(n, int):
+            return n
+    except ValueError:
+        pass
+    # if s was invalid or too big (that is, int returned long)...
+    logging.warn('Invalid HTTP content/chunk length "%s", assuming 0' % s)
+    return 0
+
+
 def parse_body(f, version, headers):
     """Return HTTP body parsed from a file object, given HTTP header dict."""
     if headers.get('transfer-encoding', '').lower() == 'chunked':
@@ -41,8 +56,8 @@ def parse_body(f, version, headers):
                 sz = f.readline().split(None, 1)[0]
             except IndexError:
                 raise dpkt.UnpackError('missing chunk size')
-            n = int(sz, 16)
-            if n == 0:
+            n = parse_length(sz, 16)
+            if n == 0:  # may happen if sz is invalid
                 found_end = True
             buf = f.read(n)
             if f.readline().strip():
@@ -56,18 +71,13 @@ def parse_body(f, version, headers):
         body = ''.join(l)
     elif 'content-length' in headers:
         # Ethan K B: Have observed malformed 0,0 content lengths
-        try:
-            n = int(headers['content-length'])
-        except ValueError:
-            logging.warn('HTTP content-length "%s" is invalid, assuming 0' %
-                         headers['content-length'])
-            n = 0
+        n = parse_length(headers['content-length'])
         body = f.read(n)
         if len(body) != n:
-          logging.warn('HTTP content-length mismatch: expected %d, got %d', n,
-                       len(body))
-          if settings.strict_http_parse_body:
-              raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
+            logging.warn('HTTP content-length mismatch: expected %d, got %d', n,
+                         len(body))
+            if settings.strict_http_parse_body:
+                raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
     else:
         # XXX - need to handle HTTP/0.9
         # BTW, this function is not called if status code is 204 or 304
