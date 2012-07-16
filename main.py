@@ -29,12 +29,15 @@ parser.add_option('-r', '--resource-usage', action='store_true',
                   dest='resource_usage', default=False)
 parser.add_option('--pad_missing_tcp_data', action='store_true',
                   dest='pad_missing_tcp_data', default=False)
+parser.add_option('--strict-http-parsing', action='store_true',
+                  dest='strict_http_parsing', default=False)
 options, args = parser.parse_args()
 
 # copy options to settings module
 settings.process_pages = options.pages
 settings.drop_bodies = options.drop_bodies
 settings.pad_missing_tcp_data = options.pad_missing_tcp_data
+settings.strict_http_parse_body = options.strict_http_parsing
 
 # setup logs
 logging.basicConfig(filename='pcap2har.log', level=logging.INFO)

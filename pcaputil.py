@@ -4,11 +4,13 @@ Various small, useful functions which have no other home.
 
 import dpkt
 
-# use inet_ntoa to process IPs, if available (it's not on AppEngine)
-try:
-    from socket import inet_ntoa
-except ImportError:
-    inet_ntoa = lambda ip: ip
+# since it isn't available on AppEngine, we had to re-implement it
+# anyway so we figured we might as well stick with it.
+def inet_ntoa(packed):
+    '''Custom implementation of inet_ntoa'''
+    if not isinstance(packed, str) or len(packed) != 4:
+        raise ValueError('Argument to inet_ntoa must a string of length 4')
+    return '.'.join(str(ord(c)) for c in packed)
 
 def friendly_tcp_flags(flags):
     '''
