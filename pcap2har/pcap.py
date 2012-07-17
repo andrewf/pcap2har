@@ -68,3 +68,13 @@ def ParsePcap(dispatcher, filename=None, reader=None):
         log.warning('A packet in the pcap file was too short, '
                     'packet_count=%d' % packet_count)
         errors.append((None, error))
+
+
+def EasyParsePcap(filename=None, reader=None):
+    '''
+    Like ParsePcap, but makes and returns a PacketDispatcher for you.
+    '''
+    dispatcher = PacketDispatcher()
+    ParsePcap(dispatcher, filename=filename, reader=reader)
+    dispatcher.finish()
+    return dispatcher

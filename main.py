@@ -56,9 +56,7 @@ else:
 logging.info("Processing %s", inputfile)
 
 # parse pcap file
-dispatcher = PacketDispatcher()
-pcap.ParsePcap(dispatcher, filename=inputfile)
-dispatcher.finish()
+dispatcher = pcap.EasyParsePcap(filename=inputfile)
 
 # parse HAR stuff
 session = httpsession.HttpSession(dispatcher)
