@@ -4,18 +4,19 @@
 Main program that converts pcaps to HAR's.
 '''
 
-import pcap
 import os
 import optparse
 import logging
 import sys
-import http
-import httpsession
-import har
 import json
-import tcp
-import settings
-from packetdispatcher import PacketDispatcher
+
+from pcap2har import pcap
+from pcap2har import http
+from pcap2har import httpsession
+from pcap2har import har
+from pcap2har import tcp
+from pcap2har import settings
+from pcap2har.packetdispatcher import PacketDispatcher
 
 # get cmdline args/options
 parser = optparse.OptionParser(
