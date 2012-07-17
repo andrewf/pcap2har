@@ -1,14 +1,15 @@
 import gzip
 import zlib
 import cStringIO
+from base64 import encodestring as b64encode
+import logging
+
 from .. import dpkt_http_replacement as dpkt_http
+from ..mediatype import MediaType
+from .. import settings
+
 import common as http
 import message
-from ..mediatype import MediaType
-import logging as log
-from .. import settings
-#from http import DecodingError # exception class from parent module
-from base64 import encodestring as b64encode
 
 # try to import UnicodeDammit from BeautifulSoup,
 # starting with system and defaulting to included version
@@ -38,6 +39,7 @@ class Response(message.Message):
     * compression_amount: int or None, difference between lengths of
       uncompressed data and raw data. None if no compression or we're not sure
     '''
+
     def __init__(self, tcpdir, pointer):
         message.Message.__init__(self, tcpdir, pointer, dpkt_http.Response)
         # get mime type
@@ -92,7 +94,8 @@ class Response(message.Message):
                     raise http.DecodingError('zlib failed to gunzip HTTP data')
                 except:
                     # who knows what else it might raise
-                    raise http.DecodingError("failed to gunzip HTTP data, don't know why")
+                    raise http.DecodingError(
+                        'failed to gunzip HTTP data, don\'t know why')
             # handle deflate
             elif encoding == 'deflate':
                 try:
@@ -101,7 +104,8 @@ class Response(message.Message):
                     # do raw deflate. See: http://bugs.python.org/issue5784
                     self.body = zlib.decompress(self.raw_body, -15)
                 except zlib.error:
-                    raise http.DecodingError('zlib failed to undeflate HTTP data')
+                    raise http.DecodingError(
+                        'zlib failed to undeflate HTTP data')
             elif encoding == 'compress' or encoding == 'x-compress':
                 # apparently nobody uses this, so basically just ignore it
                 self.body = self.raw_body
@@ -131,7 +135,6 @@ class Response(message.Message):
         to unicode if possible. Must come after handle_compression, and after
         self.mediaType is valid.
         '''
-        self.text = None
         self.encoding = None
         # if the body is text
         if (self.mediaType and
@@ -143,12 +146,14 @@ class Response(message.Message):
                 override_encodings = [self.mediaType.params['charset']]
             else:
                 override_encodings = []
-            # if there even is data (otherwise, dammit.originalEncoding might be None)
+            # if there even is data (otherwise,
+            # dammit.originalEncoding might be None)
             if self.body != '':
                 if UnicodeDammit:
-                    # honestly, I don't mind not abiding by RFC 2023. UnicodeDammit just
-                    # does what makes sense, and if the content is remotely standards-
-                    # compliant, it will do the right thing.
+                    # honestly, I don't mind not abiding by RFC 2023.
+                    # UnicodeDammit just does what makes sense, and if the
+                    # content is remotely standards-compliant, it will do the
+                    # right thing.
                     dammit = UnicodeDammit(self.body, override_encodings)
                     # if unicode was found
                     if dammit.unicode:
@@ -156,24 +161,26 @@ class Response(message.Message):
                         self.originalEncoding = dammit.originalEncoding
                     else:
                         # unicode could not be decoded, at all
-                        # HAR can't write data, but body might still be useful as-is
+                        # HAR can't write data, but body might still
+                        # be useful as-is
                         pass
                 else:
-                    # try the braindead version, just guess content-type or utf-8
+                    # try the stupid version, just guess content-type or utf-8
                     u = None
                     # try our list of encodings + utf8 with strict errors
                     for e in override_encodings + ['utf8', 'iso-8859-1']:
                         try:
                             u = self.body.decode(e, 'strict')
                             self.originalEncoding = e
-                            break # if ^^ didn't throw, we're done
+                            break  # if ^^ didn't throw, we're done
                         except UnicodeError:
                             pass
-                    # if none of those worked, try utf8 with 'replace' error mode
+                    # if none of those worked, try utf8
+                    # with 'replace' error mode
                     if not u:
                         # unicode has failed
                         u = self.body.decode('utf8', 'replace')
-                        self.originalEncoding = None # ???
+                        self.originalEncoding = None  # ???
                     self.text = u or None
         else:
             # body is not text

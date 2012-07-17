@@ -1,4 +1,5 @@
 import dpkt
+
 from ..pcaputil import *
 
 class Packet(object):
@@ -18,6 +19,7 @@ class Packet(object):
     seq_end = first sequence number past this packets data (past the end slice
         index style)
     '''
+
     def __init__(self, ts, buf, eth, ip, tcp):
         '''
         Args:
@@ -43,13 +45,16 @@ class Packet(object):
 
     def __cmp__(self, other):
         return cmp(self.ts, other.ts)
+
     def __eq__(self, other):
         return not self.__ne__(other)
+
     def __ne__(self, other):
         if isinstance(other, Packet):
             return cmp(self, other) != 0
         else:
             return True
+
     def __repr__(self):
         return 'Packet(%s, %s, seq=%x , ack=%x, data="%s")' % (
             friendly_socket(self.socket),
@@ -64,6 +69,7 @@ class PadPacket(Packet):
     '''
     Represents a fake TCP packet used for padding missing data.
     '''
+
     def __init__(self, seq, size, ts):
         self.ts = ts
         self.buf = None

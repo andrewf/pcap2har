@@ -1,5 +1,5 @@
 process_pages = True
-drop_bodies = False # bodies of http responses
+drop_bodies = False  # bodies of http responses, that is
 
 # Whether HTTP parsing should case whether the content length matches the
 # content-length header.

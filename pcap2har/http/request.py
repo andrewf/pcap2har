@@ -1,7 +1,9 @@
 import urlparse
-#import dpkt.http this is buggy
+
+# dpkt.http is buggy, so we use our modified replacement
 from .. import dpkt_http_replacement as dpkt_http
 import message as http
+
 
 class Request(http.Message):
     '''
@@ -12,6 +14,7 @@ class Request(http.Message):
     * fullurl: Full URL, with all components.
     * url: Full URL, but without fragments. (that's what HAR wants)
     '''
+
     def __init__(self, tcpdir, pointer):
         http.Message.__init__(self, tcpdir, pointer, dpkt_http.Request)
         # get query string. its the URL after the first '?'

@@ -1,7 +1,8 @@
 import flow as tcp
-import logging as log
+import logging
 
-class FlowBuilder:
+
+class FlowBuilder(object):
     '''
     Builds and stores tcp.Flow's from packets.
 
@@ -13,8 +14,10 @@ class FlowBuilder:
     Members:
     flowdict = {socket: tcp.Flow}
     '''
+
     def __init__(self):
         self.flowdict = {}
+
     def add(self, pkt):
         '''
         filters out unhandled packets, and sorts the remainder into the correct
@@ -25,14 +28,14 @@ class FlowBuilder:
         srcip, srcport = src
         dstip, dstport = dst
         # filter out weird packets, LSONG
-        if(srcport == 5223 or dstport == 5223):
-            log.warning('hpvirgtrp packets are ignored')
+        if srcport == 5223 or dstport == 5223:
+            logging.warning('hpvirgtrp packets are ignored')
             return
-        if(srcport == 5228 or dstport == 5228):
-            log.warning('hpvroom packets are ignored')
+        if srcport == 5228 or dstport == 5228:
+            logging.warning('hpvroom packets are ignored')
             return
-        if(srcport == 443 or dstport == 443):
-            log.warning('https packets are ignored')
+        if srcport == 443 or dstport == 443:
+            logging.warning('https packets are ignored')
             return
         # sort it into a tcp.Flow in flowdict
         if (src, dst) in self.flowdict:
@@ -43,5 +46,6 @@ class FlowBuilder:
             newflow = tcp.Flow()
             newflow.add(pkt)
             self.flowdict[(src, dst)] = newflow
+
     def finish(self):
         map(tcp.Flow.finish, self.flowdict.itervalues())

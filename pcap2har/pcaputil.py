@@ -4,24 +4,35 @@ Various small, useful functions which have no other home.
 
 import dpkt
 
-# since it isn't available on AppEngine, we had to re-implement it
-# anyway so we figured we might as well stick with it.
+
+# Re-implemented here only because it's missing on AppEngine.
 def inet_ntoa(packed):
     '''Custom implementation of inet_ntoa'''
     if not isinstance(packed, str) or len(packed) != 4:
         raise ValueError('Argument to inet_ntoa must a string of length 4')
     return '.'.join(str(ord(c)) for c in packed)
 
+
 def friendly_tcp_flags(flags):
     '''
     returns a string containing a user-friendly representation of the tcp flags
     '''
     # create mapping of flags to string repr's
-    d = {dpkt.tcp.TH_FIN:'FIN', dpkt.tcp.TH_SYN:'SYN', dpkt.tcp.TH_RST:'RST', dpkt.tcp.TH_PUSH:'PUSH', dpkt.tcp.TH_ACK:'ACK', dpkt.tcp.TH_URG:'URG', dpkt.tcp.TH_ECE:'ECE', dpkt.tcp.TH_CWR:'CWR'}
+    d = {
+        dpkt.tcp.TH_FIN: 'FIN',
+        dpkt.tcp.TH_SYN: 'SYN',
+        dpkt.tcp.TH_RST: 'RST',
+        dpkt.tcp.TH_PUSH: 'PUSH',
+        dpkt.tcp.TH_ACK: 'ACK',
+        dpkt.tcp.TH_URG: 'URG',
+        dpkt.tcp.TH_ECE: 'ECE',
+        dpkt.tcp.TH_CWR: 'CWR'
+    }
     #make a list of the flags that are activated
     active_flags = filter(lambda t: t[0] & flags, d.iteritems())
     #join all their string representations with '|'
     return '|'.join(t[1] for t in active_flags)
+
 
 def friendly_socket(sock):
     '''
@@ -36,11 +47,13 @@ def friendly_socket(sock):
         sock[1][1]
     )
 
-def friendly_data(str):
+
+def friendly_data(data):
     '''
     convert (possibly binary) data into a form readable by people on terminals
     '''
-    return `str`
+    return `data`
+
 
 def ms_from_timedelta(td):
     '''
@@ -51,12 +64,14 @@ def ms_from_timedelta(td):
     '''
     return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**3
 
+
 def ms_from_dpkt_time(td):
     '''
     Get milliseconds from a dpkt timestamp. This should probably only really be
     done on a number gotten from subtracting two dpkt timestamps.
     '''
-    return int(td * 1000) # um, I guess
+    return int(td * 1000)
+
 
 class ModifiedReader(object):
     '''
@@ -124,6 +139,7 @@ class ModifiedReader(object):
             buf = self.__f.read(hdr.caplen)
             yield (hdr.tv_sec + (hdr.tv_usec / 1000000.0), buf, hdr)
 
+
 class FakeStream(object):
     '''
     Emulates a tcp.Direction with a predetermined data stream.
@@ -136,6 +152,7 @@ class FakeStream(object):
         return n
     def seq_final_arrival(self, n):
         return None
+
 
 class FakeFlow(object):
     '''

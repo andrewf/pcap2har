@@ -53,7 +53,7 @@ else:
     parser.print_help()
     sys.exit()
 
-logging.info("Processing %s", inputfile)
+logging.info('Processing %s', inputfile)
 
 # parse pcap file
 dispatcher = pcap.EasyParsePcap(filename=inputfile)
@@ -61,7 +61,7 @@ dispatcher = pcap.EasyParsePcap(filename=inputfile)
 # parse HAR stuff
 session = httpsession.HttpSession(dispatcher)
 
-logging.info("Flows=%d. HTTP pairs=%d" % (len(session.flows),len(session.entries)))
+logging.info('Flows=%d. HTTP pairs=%d' % (len(session.flows), len(session.entries)))
 
 def print_rusage():
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

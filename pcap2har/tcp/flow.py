@@ -1,12 +1,13 @@
-from direction import Direction
+import logging
 import common as tcp
 
-import seq # hopefully no name collisions
-from ..sortedcollection import SortedCollection
 from dpkt.tcp import *
-import logging as log
 
-class Flow:
+from ..sortedcollection import SortedCollection
+import seq # hopefully no name collisions
+from direction import Direction
+
+class Flow(object):
     '''
     Represents TCP traffic across a given socket, ideally between a TCP
     handshake and clean connection termination.
@@ -19,12 +20,14 @@ class Flow:
     * handshake = None or (syn, synack, ack) or False. None while a handshake is
     still being searched for, False when we've given up on finding it.
     '''
+
     def __init__(self):
         self.fwd = Direction(self)
         self.rev = Direction(self)
         self.handshake = None
         self.socket = None
         self.packets = []
+
     def add(self, pkt):
         '''
         called for every packet coming in, instead of iterating through
@@ -62,6 +65,7 @@ class Flow:
                 self.handshake = tuple(self.packets[-3:])
                 self.socket = self.handshake[0].socket
                 self.flush_packets()
+
     def flush_packets(self):
         '''
         Flush packet buffer by merging all packets into either fwd or rev.
@@ -78,6 +82,7 @@ class Flow:
             self.fwd.add(pkt)
         else:
             self.rev.add(pkt)
+
     def finish(self):
         '''
         Notifies the flow that there are no more packets. This finalizes the
@@ -99,14 +104,17 @@ class Flow:
         first packet. Raises RuntimeError if self.socket is None
         '''
         if not self.socket:
-            raise RuntimeError("called tcp.Flow.samedir before direction is determined")
+            raise RuntimeError(
+                'called tcp.Flow.samedir before direction is determined')
         src, dst = pkt.socket
         if self.socket == (src, dst):
             return True
         elif self.socket == (dst, src):
             return False
         else:
-            raise ValueError("TCPFlow.samedir found a packet from the wrong flow")
+            raise ValueError(
+                'TCPFlow.samedir found a packet from the wrong flow')
+
     def writeout_data(self, basename):
         '''
         writes out the data in the flows to two files named basename-fwd.dat and

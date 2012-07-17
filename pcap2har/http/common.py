@@ -4,6 +4,7 @@ class Error(Exception):
     '''
     pass
 
+
 class DecodingError(Error):
     '''
     Raised when encoded HTTP data cannot be decompressed/decoded/whatever.

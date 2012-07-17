@@ -1,11 +1,13 @@
 import seq
 
-class Chunk:
+
+class Chunk(object):
     '''
     A chunk of data from a TCP stream in the process of being merged. Takes the
     place of the data tuples, ((begin, end), data, logger) in the old algorithm.
     Adds member functions that encapsulate the main merging logic.
     '''
+
     def __init__(self):
         '''
         Basic initialization on the chunk.
@@ -14,7 +16,7 @@ class Chunk:
         self.seq_start = None
         self.seq_end = None
 
-    def merge(self, new, new_seq_callback = None):
+    def merge(self, new, new_seq_callback=None):
         '''
         Attempts to merge the packet or chunk with the existing data. Returns
         details of the operation's success or failure.

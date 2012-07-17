@@ -1,4 +1,4 @@
-class Message:
+class Message(object):
     '''
     Contains a dpkt.http.Request/Response, as well as other data required to
     build a HAR, including (mostly) start and end time.
@@ -12,6 +12,7 @@ class Message:
     * body_raw: body before compression is taken into account
     * tcpdir: The tcp.Direction corresponding to the HTTP message
     '''
+
     def __init__(self, tcpdir, pointer, msgclass):
         '''
         Args:
