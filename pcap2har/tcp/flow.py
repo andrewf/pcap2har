@@ -2,7 +2,7 @@ from direction import Direction
 import common as tcp
 
 import seq # hopefully no name collisions
-from sortedcollection import SortedCollection
+from ..sortedcollection import SortedCollection
 from dpkt.tcp import *
 import logging as log
 

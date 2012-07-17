@@ -1,6 +1,6 @@
 import urlparse
 #import dpkt.http this is buggy
-import dpkt_http_replacement as dpkt_http
+from .. import dpkt_http_replacement as dpkt_http
 import message as http
 
 class Request(http.Message):

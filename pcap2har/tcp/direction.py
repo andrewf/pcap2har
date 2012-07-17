@@ -1,8 +1,8 @@
-from sortedcollection import SortedCollection
+from ..sortedcollection import SortedCollection
 import chunk as tcp
 from operator import itemgetter, attrgetter
 import logging as log
-import settings
+from .. import settings
 import packet
 
 class Direction:

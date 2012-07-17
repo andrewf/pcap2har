@@ -1,21 +1,27 @@
 import gzip
 import zlib
 import cStringIO
-import dpkt_http_replacement as dpkt_http
+from .. import dpkt_http_replacement as dpkt_http
 import common as http
 import message
-from mediatype import MediaType
+from ..mediatype import MediaType
 import logging as log
-import settings
+from .. import settings
 #from http import DecodingError # exception class from parent module
 from base64 import encodestring as b64encode
 
-# try to import UnicodeDammit from BeautifulSoup
+# try to import UnicodeDammit from BeautifulSoup,
+# starting with system and defaulting to included version
 # otherwise, set the name to None
 try:
-    from BeautifulSoup import UnicodeDammit
+    try:
+        from BeautifulSoup import UnicodeDammit
+    except ImportError:
+        from ..BeautifulSoup import UnicodeDammit
 except ImportError:
     UnicodeDammit = None
+    log.warning('Can\'t find BeautifulSoup, unicode is more likely to be '
+                'misinterpreted')
 
 class Response(message.Message):
     '''

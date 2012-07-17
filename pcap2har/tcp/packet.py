@@ -1,5 +1,5 @@
 import dpkt
-from pcaputil import *
+from ..pcaputil import *
 
 class Packet(object):
     '''
