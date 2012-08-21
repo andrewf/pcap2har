@@ -35,3 +35,9 @@ pcapr.net.pcap
 A pageload of pcapr.net, an online pcap repository. Includes a redirect
 from pcapr.net to pcapr.net/home
 
+missing_response.pcap:
+A flow from fhs.pcap with one of the responses missing, to test -k functionality
+
+request_only.pcap:
+Flow with a request and nothing else, to handle a different failure case of -k
+

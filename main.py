@@ -28,6 +28,8 @@ parser.add_option('--no-pages', action='store_false',
                   dest='pages', default=True)
 parser.add_option('-d', '--drop-bodies', action='store_true',
                   dest='drop_bodies', default=False)
+parser.add_option('-k', '--keep-unfulfilled-requests', action='store_true',
+                  dest='keep_unfulfilled', default=False)
 parser.add_option('-r', '--resource-usage', action='store_true',
                   dest='resource_usage', default=False)
 parser.add_option('--pad_missing_tcp_data', action='store_true',
@@ -40,6 +42,7 @@ options, args = parser.parse_args()
 # copy options to settings module
 settings.process_pages = options.pages
 settings.drop_bodies = options.drop_bodies
+settings.keep_unfulfilled_requests = options.keep_unfulfilled
 settings.pad_missing_tcp_data = options.pad_missing_tcp_data
 settings.strict_http_parse_body = options.strict_http_parsing
 

@@ -8,8 +8,8 @@
 for pcap in `ls *.pcap`
 do
 	echo $pcap
-	# check normal running
-	if ../main.py $pcap $pcap.new.har
+	# check normal running (with -k, that's what current test hars use)
+	if ../main.py -k $pcap $pcap.new.har
 	then
 		if [ -a $pcap.har ]
 		then

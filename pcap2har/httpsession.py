@@ -37,10 +37,6 @@ class Entry(object):
         self.pageref = None
         self.ts_start = int(request.ts_connect*1000)
         self.startedDateTime = datetime.utcfromtimestamp(request.ts_connect)
-        endedDateTime = datetime.utcfromtimestamp(response.ts_end)
-        self.total_time = ms_from_timedelta(
-            endedDateTime - self.startedDateTime # plus connection time, someday
-        )
         # calculate other timings
         self.time_blocked = -1
         self.time_dnsing = -1
@@ -48,14 +44,20 @@ class Entry(object):
             ms_from_dpkt_time(request.ts_start - request.ts_connect))
         self.time_sending = (
             ms_from_dpkt_time(request.ts_end - request.ts_start))
-        self.time_waiting = (
-            ms_from_dpkt_time(response.ts_start - request.ts_end))
-        self.time_receiving = (
-            ms_from_dpkt_time(response.ts_end - response.ts_start))
-        # check if timing calculations are consistent
-        if (self.time_sending + self.time_waiting + self.time_receiving !=
-            self.total_time):
-            pass
+        if response is not None:
+            self.time_waiting = (
+                ms_from_dpkt_time(response.ts_start - request.ts_end))
+            self.time_receiving = (
+                ms_from_dpkt_time(response.ts_end - response.ts_start))
+            endedDateTime = datetime.utcfromtimestamp(response.ts_end)
+            self.total_time = ms_from_timedelta(
+                endedDateTime - self.startedDateTime
+            )
+        else:
+            # this can happen if the request never gets a response
+            self.time_waiting = -1
+            self.time_receiving = -1
+            self.total_time = -1
 
     def json_repr(self):
         '''
@@ -169,8 +171,9 @@ class HttpSession(object):
             # if msg.request has a referer, keep track of that, too
             if self.page_tracker:
                 entry.pageref = self.page_tracker.getref(entry)
-            # add it to the list
-            self.entries.append(entry)
+            # add it to the list, if we're supposed to keep it.
+            if entry.response or settings.keep_unfulfilled_requests:
+                self.entries.append(entry)
         self.user_agent = self.user_agents.dominant_user_agent()
         # handle DNS AFTER sorting
         # this algo depends on first appearance of a name
