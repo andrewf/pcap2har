@@ -17,6 +17,8 @@ from pcap2har import har
 from pcap2har import tcp
 from pcap2har import settings
 from pcap2har.packetdispatcher import PacketDispatcher
+from pcap2har.pcaputil import print_rusage
+
 
 # get cmdline args/options
 parser = optparse.OptionParser(
@@ -63,12 +65,6 @@ dispatcher = pcap.EasyParsePcap(filename=inputfile)
 session = httpsession.HttpSession(dispatcher)
 
 logging.info('Flows=%d. HTTP pairs=%d' % (len(session.flows), len(session.entries)))
-
-def print_rusage():
-    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    if sys.platform == 'darwin':
-        rss /= 1024  # Mac OSX returns rss in bytes, not KiB
-    print 'max_rss:', rss, 'KiB'
 
 #write the HAR file
 with open(outputfile, 'w') as f:

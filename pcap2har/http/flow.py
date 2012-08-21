@@ -105,7 +105,7 @@ def gather_messages(MessageClass, tcpdir):
     pointer = 0 # starting index of data that MessageClass should look at
     # while there's data left
     while pointer < len(tcpdir.data):
-        curr_data = tcpdir.data[pointer:pointer+200]  # debug var
+        #curr_data = tcpdir.data[pointer:pointer+200]  # debug var
         try:
             msg = MessageClass(tcpdir, pointer)
         except dpkt.Error as error:  # if the message failed

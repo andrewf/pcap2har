@@ -98,6 +98,24 @@ def parse_body(f, version, headers):
             body = ''
     return body
 
+def parse_message(message, f):
+    """
+    Unpack headers and optionally body from the passed file-like object.
+
+    Args:
+      message: Request or Response to which to add data.
+      f: file-like object, probably StringIO.
+    """
+    # Parse headers
+    message.headers = parse_headers(f)
+    # Parse body, unless we know there isn't one
+    if not (getattr(message, 'status', None) in ('204', '304')):
+        message.body = parse_body(f, message.version, message.headers)
+    else:
+        message.body = ''
+    # Save the rest
+    message.data = f.read()
+
 class Message(dpkt.Packet):
     """Hypertext Transfer Protocol headers + body."""
     __metaclass__ = type
@@ -118,15 +136,7 @@ class Message(dpkt.Packet):
 
     def unpack(self, buf):
         f = cStringIO.StringIO(buf)
-        # Parse headers
-        self.headers = parse_headers(f)
-        # Parse body, unless we know there isn't one
-        if not (getattr(self, 'status', None) in ('204', '304')):
-            self.body = parse_body(f, self.version, self.headers)
-        else:
-            self.body = ''
-        # Save the rest
-        self.data = f.read()
+        parse_message(self, f)
 
     def pack_hdr(self):
         return ''.join([ '%s: %s\r\n' % t for t in self.headers.iteritems() ])
@@ -169,7 +179,7 @@ class Request(Message):
         self.method = l[0]
         self.uri = l[1]
         self.version = l[2][len(self.__proto)+1:]
-        Message.unpack(self, f.read())
+        parse_message(self, f)
 
     def __str__(self):
         return '%s %s %s/%s\r\n' % (self.method, self.uri, self.__proto,
@@ -193,7 +203,7 @@ class Response(Message):
         self.version = l[0][len(self.__proto)+1:]
         self.status = l[1]
         self.reason = l[2]
-        Message.unpack(self, f.read())
+        parse_message(self, f)
 
     def __str__(self):
         return '%s/%s %s %s\r\n' % (self.__proto, self.version, self.status,
