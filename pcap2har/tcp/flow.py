@@ -7,6 +7,14 @@ from ..sortedcollection import SortedCollection
 import seq # hopefully no name collisions
 from direction import Direction
 
+
+class NewFlowError(Exception):
+    '''
+    Used to signal that a new flow should be started
+    '''
+    pass
+
+
 class Flow(object):
     '''
     Represents TCP traffic across a given socket, ideally between a TCP
@@ -52,6 +60,10 @@ class Flow(object):
         # add it to the appropriate direction, if we've found or given up on
         # finding handshake
         if self.handshake is not None:
+            if pkt.flags == TH_SYN:
+                # syn packet now probably means a new flow started on the same
+                # socket. Request (demand?) that a new flow be started.
+                raise NewFlowError
             self.merge_pkt(pkt)
         else: # if handshake is None, we're still looking for a handshake
             if len(self.packets) > 13: # or something like that

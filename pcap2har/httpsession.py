@@ -140,7 +140,7 @@ class HttpSession(object):
         '''
         # parse http flows
         self.flows = []
-        for flow in packetdispatcher.tcp.flowdict.itervalues():
+        for flow in packetdispatcher.tcp.flows():
             try:
                 self.flows.append(http.Flow(flow))
             except http.Error as error:

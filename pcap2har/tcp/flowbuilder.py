@@ -12,7 +12,7 @@ class FlowBuilder(object):
     call .add() on it. This class should be renamed.
 
     Members:
-    flowdict = {socket: tcp.Flow}
+    flowdict = {socket: [tcp.Flow]}
     '''
 
     def __init__(self):
@@ -29,7 +29,7 @@ class FlowBuilder(object):
         dstip, dstport = dst
         # filter out weird packets, LSONG
         if srcport == 5223 or dstport == 5223:
-            logging.warning('hpvirgtrp packets are ignored')
+            logging.warning('hpvirtgrp packets are ignored')
             return
         if srcport == 5228 or dstport == 5228:
             logging.warning('hpvroom packets are ignored')
@@ -37,15 +37,47 @@ class FlowBuilder(object):
         if srcport == 443 or dstport == 443:
             logging.warning('https packets are ignored')
             return
-        # sort it into a tcp.Flow in flowdict
+        # sort the packet into a tcp.Flow in flowdict. If NewFlowError is
+        # raised, the existing flow doesn't want any more packets, so we
+        # should start a new flow.
         if (src, dst) in self.flowdict:
-            self.flowdict[(src, dst)].add(pkt)
+            try:
+                self.flowdict[(src, dst)][-1].add(pkt)
+            except tcp.NewFlowError:
+                self.new_flow((src, dst), pkt)
         elif (dst, src) in self.flowdict:
-            self.flowdict[(dst, src)].add(pkt)
+            try:
+                self.flowdict[(dst, src)][-1].add(pkt)
+            except tcp.NewFlowError:
+                self.new_flow((dst, src), pkt)
         else:
-            newflow = tcp.Flow()
-            newflow.add(pkt)
-            self.flowdict[(src, dst)] = newflow
+            self.new_flow((src, dst), pkt)
+
+    def new_flow(self, socket, packet):
+        '''
+        Adds a new flow to flowdict for socket, and adds the packet.
+
+        Socket must either be present in flowdict or missing entirely, eg., if
+        you pass in (src, dst), (dst, src) should not be present.
+
+        Args:
+        * socket: ((ip, port), (ip, port))
+        * packet: tcp.Packet
+        '''
+        newflow = tcp.Flow()
+        newflow.add(packet)
+        if socket in self.flowdict:
+            self.flowdict[socket].append(newflow)
+        else:
+            self.flowdict[socket] = [newflow]
+
+    def flows(self):
+        '''
+        Generator that iterates over all flows.
+        '''
+        for flowlist in self.flowdict.itervalues():
+            for flow in flowlist:
+                yield flow
 
     def finish(self):
-        map(tcp.Flow.finish, self.flowdict.itervalues())
+        map(tcp.Flow.finish, self.flows())
