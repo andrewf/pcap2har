@@ -4,6 +4,7 @@ import dpkt
 import common as http
 from request import Request
 from response import Response
+from .. import settings
 
 
 class Flow(object):
@@ -30,6 +31,10 @@ class Flow(object):
             if not success:
                 # flow is not HTTP
                 raise HTTPError('TCP Flow does not contain HTTP')
+        # now optionally clear the data on tcpflow
+        if settings.drop_bodies:
+            tcpflow.fwd.clear_data()
+            tcpflow.rev.clear_data()
         # match up requests with nearest response that occured after them
         # first request is the benchmark; responses before that
         # are irrelevant for now
