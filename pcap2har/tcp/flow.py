@@ -1,7 +1,7 @@
 import logging
 import common as tcp
 
-from dpkt.tcp import *
+from dpkt.tcp import TH_SYN
 
 from ..sortedcollection import SortedCollection
 import seq # hopefully no name collisions
@@ -10,7 +10,7 @@ from direction import Direction
 
 class NewFlowError(Exception):
     '''
-    Used to signal that a new flow should be started
+    Used to signal that a new flow should be started.
     '''
     pass
 
