@@ -32,9 +32,7 @@ class MediaType(object):
         if not data:
             logging.warning(
                 'Setting empty media type to x-unknown-content-type')
-            self.type = 'application'
-            self.subtype = 'x-unknown-content-type'
-            params = {}
+            self.set_unknown()
             return
         match = self.mediatype_re.match(data)
         if match:
@@ -52,7 +50,13 @@ class MediaType(object):
                     self.params[pairmatch.group(1)] = pairmatch.group(2)
             pass
         else:
-            raise ValueError('invalid media type string: ' + data)
+            logging.warning('Invalid media type string: "%s"' % data)
+            self.set_unknown()
+
+    def set_unknown(self):
+        self.type = 'application'
+        self.subtype = 'x-unknown-content-type'
+        self.params = {}
 
     def mimeType(self):
         return '%s/%s' % (self.type, self.subtype)
