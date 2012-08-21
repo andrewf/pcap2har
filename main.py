@@ -32,6 +32,7 @@ parser.add_option('--pad_missing_tcp_data', action='store_true',
                   dest='pad_missing_tcp_data', default=False)
 parser.add_option('--strict-http-parsing', action='store_true',
                   dest='strict_http_parsing', default=False)
+parser.add_option('-l', '--log', dest='logfile', default='pcap2har.log')
 options, args = parser.parse_args()
 
 # copy options to settings module
@@ -41,7 +42,7 @@ settings.pad_missing_tcp_data = options.pad_missing_tcp_data
 settings.strict_http_parse_body = options.strict_http_parsing
 
 # setup logs
-logging.basicConfig(filename='pcap2har.log', level=logging.INFO)
+logging.basicConfig(filename=options.logfile, level=logging.INFO)
 
 # get filenames, or bail out with usage error
 if len(args) == 2:
