@@ -37,6 +37,8 @@ class FlowBuilder(object):
         if srcport == 5228 or dstport == 5228:
             logging.warning('hpvroom packets are ignored')
             return
+#        if 38861 not in (srcport, dstport):
+#            return
         # sort the packet into a tcp.Flow in flowdict. If NewFlowError is
         # raised, the existing flow doesn't want any more packets, so we
         # should start a new flow.
@@ -66,7 +68,7 @@ class FlowBuilder(object):
         '''
         newflow = tcp.Flow()
         if socket[0][1] == 443 or socket[1][1] == 443:
-            newflow = tls.Flow(newflow, None)
+            newflow = tls.Flow(newflow, self.tls_session_manager)
         newflow.add(packet)
         if socket in self.flowdict:
             self.flowdict[socket].append(newflow)

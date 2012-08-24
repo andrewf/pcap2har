@@ -33,7 +33,7 @@ class ReadState(object):
         '''
         self.client_perspective = client_perspective
         self.params = params
-        self.decryptor = decryptors.new(params.cipher_suite.encoding)
+        self.decryptor = decryptors.new(params, client_perspective)
         self.decompressor = decompressors.new(params.compression)
         # depending on params.cipher_suite, fill out other state
 
@@ -63,8 +63,8 @@ class ReadState(object):
         Take TLSRecord with encrypted=True, return new one with False. Also
         strips off and ignores the MAC.
         '''
-        ciphertext = record.data[:len(record.data)-self.params.cipher_suite.mac_size]
-        plaintext = self.decryptor.decrypt(ciphertext)
+        plaintext = self.decryptor.decrypt(record.data)
+        #print 'plaintext: %s...%s' % (`plaintext[:15]`, `plaintext[-15:]`)
         return dpkt.ssl.TLSRecord(
                         type=record.type,
                         encrypted=False,
@@ -82,6 +82,7 @@ class Params(object):
     the previous Period.
 
     Members:
+    * version: int, TLS Version, 0 for SSL3, 1 for TLS 1.0, etc
     * cipher_suite: dpkt.ssl_ciphersuites.CipherSuite
     * compression: compression algo as int
     * master_secret: string or None
@@ -89,10 +90,14 @@ class Params(object):
     * server_random: string or None
     '''
 
-    def __init__(self, cipher_suite, **kwargs):
+    def __init__(self, version, cipher_suite, **kwargs):
+        self.version = version
         self.cipher_suite = cipher_suite or dpkt.ssl_ciphersuites.BY_CODE[0x00]
         self.master_secret = kwargs.get('master_secret')
         self.compression = kwargs.get('compression', 0)
+        self.client_random = kwargs.get('client_random')
+        self.server_random = kwargs.get('server_random')
+
 
 class Plex(object):
     '''
@@ -234,13 +239,14 @@ class Period(object):
     * client_hello: TLSHandshake, the ClientHello.
     '''
 
-    def __init__(self, prev_period):
+    def __init__(self, prev_period, tls_session_manager):
         '''
         Get ready to receive and process packets.
 
         Args:
         * prev_period: Period from which we'll grab all the parameters
             we need, or None if no previous period
+        * tls_session_manager: session.SessionManager or None
         '''
         # figure out params from prev_period. This is mainly cipher_suite and
         # compression. This code also needs to set fwd_is_server for the
@@ -248,21 +254,41 @@ class Period(object):
         #print 'creating Period'
         if prev_period is None:
             #print '  no previous period'
-            self.params = Params(dpkt.ssl_ciphersuites.BY_CODE[0x00])
+            self.params = Params(None, dpkt.ssl_ciphersuites.BY_CODE[0x00])
             fwd_is_server = True  # just guessing, it doesn't matter now anyway.
+            #print 'Creating ConnStatePeriod from nothing'
         else:
             if prev_period.server_hello:
                 cipher_suite = prev_period.server_hello.data.cipher_suite
                 #print '  grabbed cipher_suite', `cipher_suite`
                 compression = prev_period.server_hello.data.compression
+                #print 'Creating ConnStatePeriod cs %s comp %d' % (
+                #    cipher_suite.name, compression)
+                server_random = prev_period.server_hello.data.random
             else:
                 # no server hello in a previous period is pretty weird. This
                 # should never happen.
                 #print '  no server_hello in prev_period'
                 cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[0x00]
                 compression = 0x00
-            self.params = Params(cipher_suite,
-                                                compression=compression)
+                server_random = None
+            master_secret = None
+            client_random = None
+            if prev_period.client_hello:
+                client_random = prev_period.client_hello.data.random
+                if tls_session_manager:
+                    # this might just return None anyway.
+                    master_secret = tls_session_manager.get_master_secret(
+                        client_random)
+                    if not master_secret:
+                        print 'woops, no secret for %r' % client_random
+                    else:
+                        print 'yes, got it'
+            self.params = Params(None, cipher_suite,
+                                 compression=compression,
+                                 client_random=client_random,
+                                 server_random=server_random,
+                                 master_secret=master_secret,)
             # figure out fwd_is_server
             if prev_period.to_server is prev_period.fwd:
                 #print '  fwd_is_server = True'
@@ -290,13 +316,13 @@ class Period(object):
             #print 'processing Handshake'
             # the server READS ClientHello's, and vice versa
             if isinstance(message.data, dpkt.ssl.TLSClientHello):
-                #print '  ClientHello'
+                print '  ClientHello'
                 plex.client_perspective = False
                 other_plex.client_perspective = True
                 self.to_server = plex  # read by server
                 self.client_hello = message
             elif isinstance(message.data, dpkt.ssl.TLSServerHello):
-                #print '  ServerHello'
+                print '  ServerHello'
                 plex.client_perspective = True
                 other_plex.client_perspective = False
                 self.to_server = other_plex

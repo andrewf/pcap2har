@@ -1,7 +1,7 @@
 .gitignore
 *.pyc
 pcap2har.log
-tests/*.har
+tests/*.new.har
 tests/*.log
 *.sw[op]
 *.log

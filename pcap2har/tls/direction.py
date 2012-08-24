@@ -66,7 +66,7 @@ class Direction(object):
             new_data = self.tcpdir.data[self.parsed_bytes:]
             records, bytes_parsed = ssl.TLSMultiFactory(new_data)
             for rec in records:
-                #print 'new record'
+                #print 'new record', rec.type
                 # add it to internal list of all packets this direction
                 new_messages = self.tls_state.add_record(rec)
                 for msg in new_messages:
@@ -98,6 +98,7 @@ class Direction(object):
             # self.tls_state starts None at construction, don't save that.
             self.old_states.append(self.tls_state)
         self.tls_state = self.flow.next_connstate(self)
+        #print '  new state %r' % self.tls_state.params.cipher_suite.name
 
     def byte_final_arrival(self, byte):
         return self.timing_data.find_le(byte)[1]

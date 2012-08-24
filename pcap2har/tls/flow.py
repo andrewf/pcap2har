@@ -42,10 +42,11 @@ class Flow(object):
     # after-the-fact decryption?
     def __init__(self, tcpflow, session_manager):
         self.tcpflow = tcpflow
+        self.session_manager = session_manager
         # connstate and pending_connstate will be set for the first time
         # by the Directions when they call next_connstate to get their
         # first connection states
-        self.pending_params = connectionstate.Params(None) # fill in later
+        self.pending_params = connectionstate.Params(None, None) # fill in later
         self.connstate = None
         self.pending_connstate = None
         self.old_states = []
@@ -82,11 +83,12 @@ class Flow(object):
         else:
             # create pending_connstate, reset everything for next one
             # assume fwd is read from server perspective, for now.
-            self.pending_connstate = connectionstate.Period(self.connstate)
+            self.pending_connstate = connectionstate.Period(self.connstate,
+                                                            self.session_manager)
             if self.connstate is not None:
                 self.old_states.append(self.connstate)
             self.connstate = self.pending_connstate  # yes, this is weird
-            self.pending_params = connectionstate.Params(None)
+            self.pending_params = connectionstate.Params(None, None)
             ret = right_plex()
         return ret
 

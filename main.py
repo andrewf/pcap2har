@@ -67,14 +67,14 @@ else:
 logging.info('Processing %s', inputfile)
 
 # open keylog file, if specified, and create a tls.SessionManager
+tls_session_manager = None
 if options.keylog:
     try:
         keylog = open(options.keylog)
         tls_session_manager = tls.session.SessionManager(keylog)
+        #print tls_session_manager.random_to_master
     except IOError:
         print >>sys.stderr, 'Failed to read keylog file', options.keylog
-else:
-    tls_session_manager = None
 
 # parse pcap file
 dispatcher = PacketDispatcher(tls_session_manager)
