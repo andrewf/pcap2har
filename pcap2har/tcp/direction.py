@@ -16,10 +16,8 @@ class Direction(object):
     of data, used by higher-level protocols. The important parts of this
     interface are these member vars and methods:
     * data: string
-    * byte_to_seq(byte): sequence number corresponding to that byte
-    * seq_final_arrival(seq): when that sequence number and all data before
-      it had arrived.
-    * ???
+    * byte_final_arrival(byte): dpkt timestamp when that byte and all data
+        before it had arrived.
 
     Members:
     * finished = bool. Indicates whether more packets should be expected.
@@ -211,6 +209,9 @@ class Direction(object):
             return self.arrival_data.find_le(seq_num)[1]
         except ValueError:
             return None
+
+    def byte_final_arrival(self, byte):
+        return self.seq_final_arrival(self.byte_to_seq(byte))
 
     def seq_final_arrival(self, seq_num):
         '''

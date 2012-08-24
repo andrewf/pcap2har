@@ -1,18 +1,28 @@
 # Copyright 2012 Google Inc.
 
 from dpkt import ssl
+from operator import itemgetter
+from ..sortedcollection import SortedCollection
 from cStringIO import StringIO
 
 class Direction(object):
     '''
-    One side of an SSL flow.
+    One side of an SSL flow. Conforms to tcp.Direction interface.
 
     This class must track how much of the finally-arrived
-    data we have already parsed into dpkt.SSL3* messages, and
+    data we have already parsed into dpkt.ssl.TLS* messages, and
     only parse new stuff when packets are added.
 
     Members:
     * tcpdir: tcp.Direction
+    * tls_state: connectionstate.ConnStatePlex, this side of the current
+       connection state.
+    * old_states: [ConnStatePlex], ConnStatePlex's that have been
+       obsoleted by ChangeCipherSpec's.
+    * parsed_bytes: how many bytes of tcpdir.data have been turned into
+        TLSRecords so far.
+    * timing_data: SortedCollection([(byte, ts)]), where ts is the time at which
+        byte arrived, and all the bytes after it up to the next one.
     '''
     def __init__(self, flow, tcpdir):
         '''
@@ -36,13 +46,19 @@ class Direction(object):
         self.parsed_bytes = 0
         self.app_data = []
         self.old_states = []
-        self._data = None
+        self.timing_data = SortedCollection(key=itemgetter(0))
+        self._data = StringIO()
 
     def update_records(self):
         '''
         If data we haven't parsed yet has finally arrived in tcpdir,
         parse it, save it, and notify self.tls_state. Invalidate _data cache.
-        Called by flow whenever packets are added.
+        Called by flow immediately whenever packets are added.
+
+        Arg:
+          ts: dpkt timestamp, when the packet that triggered this call finally
+            arrived. This works because there is only any new data if the
+            packet triggered final arrival of new data.
         '''
         if (not (self.tcpdir.data is None)
                 and self.parsed_bytes < len(self.tcpdir.data)):
@@ -50,54 +66,38 @@ class Direction(object):
             new_data = self.tcpdir.data[self.parsed_bytes:]
             records, bytes_parsed = ssl.TLSMultiFactory(new_data)
             for rec in records:
-                print 'new record'
+                #print 'new record'
                 # add it to internal list of all packets this direction
                 new_messages = self.tls_state.add_record(rec)
                 for msg in new_messages:
-                    #print 'new message: %r' % msg
-                    # we could just add to app data here...
                     if isinstance(msg, ssl.TLSChangeCipherSpec):
                         # immediately switches over to new cipher state
                         self.on_change_cipher_spec()
+                    elif isinstance(msg, ssl.TLSAppData):
+                        # record the data and the timing (_data is always
+                        # written at the end, so tell() gives its length)
+                        # may not be accurate without seq_start, since pointer
+                        # will be 0 and then we'll read several packets...
+                        ts = self.tcpdir.byte_final_arrival(self.parsed_bytes)
+                        self.timing_data.insert((self._data.tell(), ts))
+                        self._data.write(msg)   # AppData is a string
             # update pointer
             self.parsed_bytes += bytes_parsed
-            # invalidate cache
-            self._data = None
 
     @property
     def data(self):
-        #print 'pretending to decrypt data: "%s"' % `self.ciphertext[:300]`
-        # join together the data segments from plaintext AppData records in
-        # all tls_states
-        print 'processing data'
-        if self._data is None:
-            sio = StringIO()
-            for state in self.old_states + [self.tls_state]:
-                print '  state'
-                for msg in state.plaintext:
-                    if isinstance(msg, ssl.TLSAppData):
-                        print '   appdata'
-                        sio.write(msg)
-            self._data = sio.getvalue()
-        print 'returning data %s...%s' % (repr(self._data[:15]),
-                                          repr(self._data[-15:]))
-        return self._data
+        return self._data.getvalue()
 
     def on_change_cipher_spec(self):
         '''
         Switch to next connstate
         '''
-        print 'switching connstate'
+        #print 'switching connstate'
         if self.tls_state:
-            print '  after first time'
+            #print '  after first time'
             # self.tls_state starts None at construction, don't save that.
             self.old_states.append(self.tls_state)
         self.tls_state = self.flow.next_connstate(self)
 
-    def byte_to_seq(self, byte):
-        # this fn may be replaced by byte_final_arrival
-        return self.tcpdir.byte_to_seq(byte)  # LIES!!
-
-    def seq_final_arrival(self, seq):
-        # this fn may be replaced by byte_final_arrival
-        return self.tcpdir.seq_final_arrival(seq)  # MOAR LIES!
+    def byte_final_arrival(self, byte):
+        return self.timing_data.find_le(byte)[1]

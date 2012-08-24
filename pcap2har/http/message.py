@@ -26,12 +26,9 @@ class Message(object):
         self.data_consumed = (len(tcpdir.data) - pointer) - len(self.msg.data)
         # save memory by deleting data attribute; it's useless
         self.msg.data = None
-        # calculate sequence numbers of data
-        self.seq_start = tcpdir.byte_to_seq(pointer)
-        self.seq_end = tcpdir.byte_to_seq(pointer + self.data_consumed) # past-the-end
         # calculate arrival_times
-        self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
-        self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        self.ts_start = tcpdir.byte_final_arrival(pointer)
+        self.ts_end = tcpdir.byte_final_arrival(pointer + self.data_consumed - 1)
         # get raw body
         self.raw_body = self.msg.body
         self.__pointer = pointer

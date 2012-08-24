@@ -149,9 +149,7 @@ class FakeStream(object):
     '''
     def __init__(self, data):
         self.data = data
-    def byte_to_seq(self, n):
-        return n
-    def seq_final_arrival(self, n):
+    def byte_final_arrival(self, n):
         return None
 
 

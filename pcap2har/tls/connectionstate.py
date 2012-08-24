@@ -142,7 +142,7 @@ class ConnStatePlex(object):
 
         Returns any new plaintext messages that result.
         '''
-        print 'adding record of type %d' % record.type
+        #print 'adding record of type %d' % record.type
         self.encrypted.append(record)
         return self.update_plaintext()
 
@@ -161,14 +161,14 @@ class ConnStatePlex(object):
                 # nothing we can do here
                 return []
         # decrypt any new records
-        print 'updating plaintext with records'
+        #print 'updating plaintext with records'
         if len(self.encrypted) > self.records_decrypted:
             new_records = map(self.read_state.process_record,
                               self.encrypted[self.records_decrypted:])
             self.records_decrypted += len(new_records)
             new_messages = []
             for rec in new_records:
-                print '  update_plaintext: new record:', repr(rec.length)
+                #print '  update_plaintext: new record:', repr(rec.length)
                 # if there is plaintext residue, make sure its type matches with
                 # the current record.
                 if (self.plaintext_residue and
@@ -190,18 +190,18 @@ class ConnStatePlex(object):
                 #print '  parsing record data:', locals()
                 while pointer < end:
                     try:
-                        print '   parsing new message'
+                        #print '   parsing new message'
                         new_message = klass(plaintext[pointer:])
                         pointer += len(new_message)
                         new_messages.append(new_message)
                     except dpkt.NeedData:
-                        print '   saving residue'
+                        #print '   saving residue'
                         self.plaintext_residue_type = rec.type
                         self.plaintext_residue = plaintext[pointer:]
                         break
             self.plaintext.extend(new_messages)
             for msg in new_messages:
-                print '   sending message to period'
+                #print '   sending message to period'
                 self.period.process_message(self, msg)
             return new_messages
         else:
@@ -251,30 +251,30 @@ class ConnStatePeriod(object):
         # figure out params from prev_period. This is mainly cipher_suite and
         # compression. This code also needs to set fwd_is_server for the
         # creation of plexes below.
-        print 'creating ConnStatePeriod'
+        #print 'creating ConnStatePeriod'
         if prev_period is None:
-            print '  no previous period'
+            #print '  no previous period'
             self.params = ConnectionStateParams(dpkt.ssl_ciphersuites.BY_CODE[0x00])
             fwd_is_server = True  # just guessing, it doesn't matter now anyway.
         else:
             if prev_period.server_hello:
                 cipher_suite = prev_period.server_hello.data.cipher_suite
-                print '  grabbed cipher_suite', `cipher_suite`
+                #print '  grabbed cipher_suite', `cipher_suite`
                 compression = prev_period.server_hello.data.compression
             else:
                 # no server hello in a previous period is pretty weird. This
                 # should never happen.
-                print '  no server_hello in prev_period'
+                #print '  no server_hello in prev_period'
                 cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[0x00]
                 compression = 0x00
             self.params = ConnectionStateParams(cipher_suite,
                                                 compression=compression)
             # figure out fwd_is_server
             if prev_period.to_server is prev_period.fwd:
-                print '  fwd_is_server = True'
+                #print '  fwd_is_server = True'
                 fwd_is_server = True
             else:
-                print '  fwd_is_server = False'
+                #print '  fwd_is_server = False'
                 fwd_is_server = False
         # create plexes
         self.fwd = ConnStatePlex(self, self.params, not fwd_is_server)
@@ -293,19 +293,20 @@ class ConnStatePeriod(object):
         assert plex in (self.fwd, self.rev)
         other_plex = self.fwd if plex is self.rev else self.rev
         if isinstance(message, dpkt.ssl.TLSHandshake):
-            print 'processing Handshake'
+            #print 'processing Handshake'
             # the server READS ClientHello's, and vice versa
             if isinstance(message.data, dpkt.ssl.TLSClientHello):
-                print '  ClientHello'
+                #print '  ClientHello'
                 plex.client_perspective = False
                 other_plex.client_perspective = True
                 self.to_server = plex  # read by server
                 self.client_hello = message
             elif isinstance(message.data, dpkt.ssl.TLSServerHello):
-                print '  ServerHello'
+                #print '  ServerHello'
                 plex.client_perspective = True
                 other_plex.client_perspective = False
                 self.to_server = other_plex
                 self.server_hello = message
         else:
-            print 'processing non-Handshake', repr(message)
+            pass
+            #print 'processing non-Handshake', repr(message)
