@@ -14,15 +14,23 @@ class SessionManager(object):
     '''
 
     def __init__(self, keylog=None):
+        '''
+        Basically, load a keylog file if one is supplied
+
+        Args:
+        * keylog: file-like object containing keylog data.
+        '''
         self.random_to_master = {}
         if keylog is not None:
             self.load_keylog(keylog)
 
     def load_keylog(self, keylog):
         '''
-        Parse the passed keylog file into self.random_to_master.
+        Parse the passed keylog file into self.random_to_master.  Ignore
+        RSA entries for now.
 
-        Ignore RSA entries for now.
+        Args:
+        * keylog: file-like object containing keylog data.
         '''
         pass
 

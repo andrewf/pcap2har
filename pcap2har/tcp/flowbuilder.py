@@ -17,9 +17,9 @@ class FlowBuilder(object):
     flowdict = {socket: [tcp.Flow]}
     '''
 
-    def __init__(self, keylog=None):
+    def __init__(self, tls_session_manager=None):
         self.flowdict = {}
-        self.tls_session_manager = session.SessionManager(keylog or '')
+        self.tls_session_manager = tls_session_manager or session.SessionManager(None)
 
     def add(self, pkt):
         '''

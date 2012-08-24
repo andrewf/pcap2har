@@ -16,8 +16,8 @@ class PacketDispatcher:
     * udp = udp.Processor
     '''
 
-    def __init__(self, keylog):
-        self.tcp = tcp.FlowBuilder(keylog)
+    def __init__(self, tls_session_manager=None):
+        self.tcp = tcp.FlowBuilder(tls_session_manager)
         self.udp = udp.Processor()
 
     def add(self, ts, buf, eth):

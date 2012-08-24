@@ -15,7 +15,7 @@ from pcap2har import http
 from pcap2har import httpsession
 from pcap2har import har
 from pcap2har import tcp
-#from pcap2har import tls
+from pcap2har import tls
 from pcap2har import settings
 from pcap2har.packetdispatcher import PacketDispatcher
 from pcap2har.pcaputil import print_rusage
@@ -38,7 +38,10 @@ parser.add_option('--pad_missing_tcp_data', action='store_true',
 parser.add_option('--strict-http-parsing', action='store_true',
                   dest='strict_http_parsing', default=False)
 parser.add_option('-l', '--log', dest='logfile', default='pcap2har.log')
-parser.add_option('--keylog', dest='keylog', default=None)
+parser.add_option('--nsskeylog', dest='keylog', default=None,
+                  help = 'Log of SSL/TLS keys used in a browsing session. See '
+                  'https://developer.mozilla.org/en-US/docs/NSS_Key_Log_Format '
+                  'and the README for more details.')
 options, args = parser.parse_args()
 
 # copy options to settings module
@@ -63,17 +66,18 @@ else:
 
 logging.info('Processing %s', inputfile)
 
-# read keylog file, if specified
+# open keylog file, if specified, and create a tls.SessionManager
 if options.keylog:
     try:
-        keylog = open(options.keylog).read()
+        keylog = open(options.keylog)
+        tls_session_manager = tls.session.SessionManager(keylog)
     except IOError:
         print >>sys.stderr, 'Failed to read keylog file', options.keylog
 else:
-    keylog = None
+    tls_session_manager = None
 
 # parse pcap file
-dispatcher = PacketDispatcher(keylog)
+dispatcher = PacketDispatcher(tls_session_manager)
 pcap.ParsePcap(dispatcher, filename=inputfile)
 dispatcher.finish()
 
