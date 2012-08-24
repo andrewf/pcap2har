@@ -20,7 +20,7 @@ class ReadState(object):
     e.g., you'll need two of these to decrypt a whole connection.
 
     Members:
-    * params: ConnectionStateParams
+    * params: Params
     * compression_state: None, or some compressor
     * cipher_state: depends on cipher suite
     * client_perspective: bool, whether we're reading from client_perspective
@@ -29,7 +29,7 @@ class ReadState(object):
 
     def __init__(self, params, client_perspective):
         '''
-        Create a ConnectionState based on ConnectionStateParams
+        Get together some state based on Params
         '''
         self.client_perspective = client_perspective
         self.params = params
@@ -72,14 +72,14 @@ class ReadState(object):
                         data=plaintext)
 
 
-class ConnectionStateParams(object):
+class Params(object):
     '''
-    Various parameters needed to start a ConnectionState
+    Various parameters needed to start a State
 
     The biggest ones are the cipher suite and, if available, the master
     secret. We also need to know whether we're reading from the client
     or server perspective. These parameters will generally be derived from
-    the previous ConnectionStatePeriod.
+    the previous Period.
 
     Members:
     * cipher_suite: dpkt.ssl_ciphersuites.CipherSuite
@@ -94,14 +94,14 @@ class ConnectionStateParams(object):
         self.master_secret = kwargs.get('master_secret')
         self.compression = kwargs.get('compression', 0)
 
-class ConnStatePlex(object):
+class Plex(object):
     '''
-    One side of a ConnStatePeriod. One plex, as opposed to duplex.
+    One side of a Period. One plex, as opposed to duplex.
 
     Stores a list of TLSEncrypted, and incrementally decrypt them
     (using self.read_state) into a plaintext stream. Then incrementally
     parse this into a list of inner TLS messages; handshake, appdata, etc.
-    Passes them through to ConnStatePeriod, which figures out period-wide
+    Passes them through to Period, which figures out period-wide
     info from them.
 
     Can't instantiate read_state until we know whether we're reading from
@@ -110,9 +110,9 @@ class ConnStatePlex(object):
     is when params is None
 
     Members:
-    * period: ConnStatePeriod that owns this.
+    * period: Period that owns this.
     * client_perspective: bool or None, depending on whether it's known.
-    * params: ConnectionStateParams, for read_state
+    * params: Params, for read_state
     * read_state: ReadState, state for decryption, etc.
     * encrypted: [TLSRecord], incoming encrypted records
     * records_decrypted: int, number of records in self.encrypted that
@@ -214,27 +214,21 @@ class ConnStatePlex(object):
         self.encrypted = None
 
 
-class ConnStatePeriod(object):
+class Period(object):
     '''
     Packets that passed during a connection state's duration, and information
     derived therefrom.
 
     Picks up stuff like the handshake and associated parameters for
     next connection state (if any), and at some point decrypts and decompresses
-    its TLSRecord's with the help of a ConnectionState derived from its own
-    ConnectionParams. Finishes when both Plex's have received ChangeCipherSpec.
+    its TLSRecord's with the help of Plex's derived from its own Params.
+    Finishes when both Plex's have received ChangeCipherSpec.
 
-    * fwd: [TLSRecord], packets in the forward direction
-    * rev: [TLSRecord], reverse records
+    * fwd: Plex, handles decrypting forward stream.
+    * rev: Plex that handles reverse stream.
     * to_server: ref to either fwd or rev, depending on which one
         contains packets sent to the server, or None if not known yet.
-    * params: ConnectionStateParams. Must be passed in complete.
-    * fwd_state: ConnectionState for processing fwd records
-    * rev_state: ConnectionState for processing rev records
-    * fwd_plaintext: plaintext versions of records in self.fwd, or None
-        TODO: decrypt progressively? I guess we can do that based on length of
-        list
-    * rev_plaintext: ditto fwd
+    * params: Params. Must be passed in complete.
     * server_hello: TLSHandshake, the ServerHello for any handshake happening
         during this state.
     * client_hello: TLSHandshake, the ClientHello.
@@ -245,16 +239,16 @@ class ConnStatePeriod(object):
         Get ready to receive and process packets.
 
         Args:
-        * prev_period: ConnStatePeriod from which we'll grab all the parameters
+        * prev_period: Period from which we'll grab all the parameters
             we need, or None if no previous period
         '''
         # figure out params from prev_period. This is mainly cipher_suite and
         # compression. This code also needs to set fwd_is_server for the
         # creation of plexes below.
-        #print 'creating ConnStatePeriod'
+        #print 'creating Period'
         if prev_period is None:
             #print '  no previous period'
-            self.params = ConnectionStateParams(dpkt.ssl_ciphersuites.BY_CODE[0x00])
+            self.params = Params(dpkt.ssl_ciphersuites.BY_CODE[0x00])
             fwd_is_server = True  # just guessing, it doesn't matter now anyway.
         else:
             if prev_period.server_hello:
@@ -267,7 +261,7 @@ class ConnStatePeriod(object):
                 #print '  no server_hello in prev_period'
                 cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[0x00]
                 compression = 0x00
-            self.params = ConnectionStateParams(cipher_suite,
+            self.params = Params(cipher_suite,
                                                 compression=compression)
             # figure out fwd_is_server
             if prev_period.to_server is prev_period.fwd:
@@ -277,8 +271,8 @@ class ConnStatePeriod(object):
                 #print '  fwd_is_server = False'
                 fwd_is_server = False
         # create plexes
-        self.fwd = ConnStatePlex(self, self.params, not fwd_is_server)
-        self.rev = ConnStatePlex(self, self.params, fwd_is_server)
+        self.fwd = Plex(self, self.params, not fwd_is_server)
+        self.rev = Plex(self, self.params, fwd_is_server)
         self.to_server = self.fwd if fwd_is_server else self.rev
         # set misc vars for benefit of next period
         self.server_hello = self.client_hello = None
@@ -288,7 +282,7 @@ class ConnStatePeriod(object):
         Do non-plex-specific processing of message, mainly handshake detection.
 
         Args:
-        * plex: ConnStatePlex sending on which the message arrived
+        * plex: Plex sending on which the message arrived
         '''
         assert plex in (self.fwd, self.rev)
         other_plex = self.fwd if plex is self.rev else self.rev

@@ -6,11 +6,7 @@ A flow using SSL or TLS encryption
 import logging
 from .direction import Direction
 from dpkt import ssl
-from connectionstate import (
-    ConnectionStateParams,
-    ConnStatePeriod,
-    ConnStatePlex
-)
+import connectionstate
 
 
 class Flow(object):
@@ -30,15 +26,15 @@ class Flow(object):
     * fwd: ssl.Direction
     * rev: ssl.Direction
     * tcpflow: tcp.Flow
-    * connstate: connectionstate.ConnectionStatePeriod, connection state to
+    * connstate: connectionstate.Period, connection state to
         which packets are currently being added (starts None, set by
         next_connstate)
-    * pending_params: connectionstate.ConnectionStateParams, settings
+    * pending_params: connectionstate.Params, settings
         for connection state to come
-    * pending_connstate: connectionstate.ConnectionState or None. None until
+    * pending_connstate: connectionstate.Period or None. None until
         self.fwd or rev asks for the next connection state, and set back to None
         when the other one asks for it. Serves as a flag for whether
-    * old_states: [ConnectionStatePeriod], states which have been killed
+    * old_states: [connectionstate.Period], states which have been killed
         by ChangeCipherSpec.
     '''
 
@@ -49,7 +45,7 @@ class Flow(object):
         # connstate and pending_connstate will be set for the first time
         # by the Directions when they call next_connstate to get their
         # first connection states
-        self.pending_params = ConnectionStateParams(None) # fill in later
+        self.pending_params = connectionstate.Params(None) # fill in later
         self.connstate = None
         self.pending_connstate = None
         self.old_states = []
@@ -86,11 +82,11 @@ class Flow(object):
         else:
             # create pending_connstate, reset everything for next one
             # assume fwd is read from server perspective, for now.
-            self.pending_connstate = ConnStatePeriod(self.connstate)
+            self.pending_connstate = connectionstate.Period(self.connstate)
             if self.connstate is not None:
                 self.old_states.append(self.connstate)
             self.connstate = self.pending_connstate  # yes, this is weird
-            self.pending_params = ConnectionStateParams(None)
+            self.pending_params = connectionstate.Params(None)
             ret = right_plex()
         return ret
 
