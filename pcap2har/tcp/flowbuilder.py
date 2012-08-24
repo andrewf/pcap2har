@@ -1,4 +1,5 @@
 from .. import tls
+from ..tls import session
 import flow as tcp
 import logging
 
@@ -16,8 +17,9 @@ class FlowBuilder(object):
     flowdict = {socket: [tcp.Flow]}
     '''
 
-    def __init__(self):
+    def __init__(self, keylog=None):
         self.flowdict = {}
+        self.tls_session_manager = session.SessionManager(keylog or '')
 
     def add(self, pkt):
         '''
@@ -64,7 +66,7 @@ class FlowBuilder(object):
         '''
         newflow = tcp.Flow()
         if socket[0][1] == 443 or socket[1][1] == 443:
-            newflow = tls.Flow(newflow)
+            newflow = tls.Flow(newflow, None)
         newflow.add(packet)
         if socket in self.flowdict:
             self.flowdict[socket].append(newflow)

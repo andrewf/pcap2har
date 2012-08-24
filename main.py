@@ -38,6 +38,7 @@ parser.add_option('--pad_missing_tcp_data', action='store_true',
 parser.add_option('--strict-http-parsing', action='store_true',
                   dest='strict_http_parsing', default=False)
 parser.add_option('-l', '--log', dest='logfile', default='pcap2har.log')
+parser.add_option('--keylog', dest='keylog', default=None)
 options, args = parser.parse_args()
 
 # copy options to settings module
@@ -62,8 +63,19 @@ else:
 
 logging.info('Processing %s', inputfile)
 
+# read keylog file, if specified
+if options.keylog:
+    try:
+        keylog = open(options.keylog).read()
+    except IOError:
+        print >>sys.stderr, 'Failed to read keylog file', options.keylog
+else:
+    keylog = None
+
 # parse pcap file
-dispatcher = pcap.EasyParsePcap(filename=inputfile)
+dispatcher = PacketDispatcher(keylog)
+pcap.ParsePcap(dispatcher, filename=inputfile)
+dispatcher.finish()
 
 # parse HAR stuff
 session = httpsession.HttpSession(dispatcher)

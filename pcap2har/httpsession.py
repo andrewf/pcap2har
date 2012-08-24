@@ -144,7 +144,8 @@ class HttpSession(object):
         self.flows = []
         for flow in packetdispatcher.tcp.flows():
             try:
-                self.flows.append(http.Flow(flow))
+                if flow.fwd.data and flow.rev.data:
+                    self.flows.append(http.Flow(flow))
             except http.Error as error:
                 logging.warning(error)
             except dpkt.dpkt.Error as error:

@@ -4,3 +4,4 @@ pcap2har.log
 tests/*.har
 tests/*.log
 *.sw[op]
+*.log

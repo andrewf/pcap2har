@@ -16,8 +16,8 @@ class PacketDispatcher:
     * udp = udp.Processor
     '''
 
-    def __init__(self):
-        self.tcp = tcp.FlowBuilder()
+    def __init__(self, keylog):
+        self.tcp = tcp.FlowBuilder(keylog)
         self.udp = udp.Processor()
 
     def add(self, ts, buf, eth):
