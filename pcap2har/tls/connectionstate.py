@@ -84,7 +84,7 @@ class Params(object):
 
     Members:
     * version: int, TLS Version, 0 for SSL3, 1 for TLS 1.0, etc
-    * cipher_suite: dpkt.ssl_ciphersuites.CipherSuite
+    * cipher_suite: dpkt.ssl_ciphersuites.CipherSuite, defaults to NULL cipher.
     * compression: compression algo as int
     * master_secret: string or None
     * client_random: string or None
@@ -92,12 +92,23 @@ class Params(object):
     '''
 
     def __init__(self, version, cipher_suite, **kwargs):
+        '''
+        Args:
+        * version: version as int from 0..3
+        * cipher_suite: as raw int, or None.
+        '''
         self.version = version
-        self.cipher_suite = cipher_suite or dpkt.ssl_ciphersuites.BY_CODE[0x00]
+        self.cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[0x00]
+        if cipher_suite is not None:
+            try:
+                self.cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[cipher_suite]
+            except KeyError:
+                logging.warning('Unknown cipher suite code 0x%04x' % cipher_suite)
         self.master_secret = kwargs.get('master_secret')
         self.compression = kwargs.get('compression', 0)
         self.client_random = kwargs.get('client_random')
         self.server_random = kwargs.get('server_random')
+
 
 
 class Plex(object):
@@ -214,10 +225,12 @@ class Plex(object):
             # no new records, no new messages
             return []
 
-    def clear_encrypted(self):
-        '''Get rid of encrypted TLS records.'''
-        self.encrypted.clear()
-        self.encrypted = None
+    def clear_data(self):
+        '''
+        Save memory by getting rid of stored records.
+        '''
+        self.encrypted = []
+        self.plaintext = []
 
 
 class Period(object):
@@ -255,7 +268,7 @@ class Period(object):
         #print 'creating Period'
         if prev_period is None:
             #print '  no previous period'
-            self.params = Params(None, dpkt.ssl_ciphersuites.BY_CODE[0x00])
+            self.params = Params(None, 0x00)
             fwd_is_server = True  # just guessing, it doesn't matter now anyway.
             #print 'Creating ConnStatePeriod from nothing'
         else:
@@ -270,7 +283,7 @@ class Period(object):
                 # no server hello in a previous period is pretty weird. This
                 # should never happen.
                 #print '  no server_hello in prev_period'
-                cipher_suite = dpkt.ssl_ciphersuites.BY_CODE[0x00]
+                cipher_suite = 0x00
                 compression = 0x00
                 server_random = None
             master_secret = None
@@ -281,10 +294,10 @@ class Period(object):
                     # this might just return None anyway.
                     master_secret = tls_session_manager.get_master_secret(
                         client_random)
-                    if not master_secret:
-                        print 'woops, no secret for %r' % client_random
-                    else:
-                        print 'yes, got it'
+                    #if not master_secret:
+                        #print 'woops, no secret for %r' % client_random
+                    #else:
+                        #print 'yes, got it'
             self.params = Params(None, cipher_suite,
                                  compression=compression,
                                  client_random=client_random,
@@ -317,13 +330,13 @@ class Period(object):
             #print 'processing Handshake'
             # the server READS ClientHello's, and vice versa
             if isinstance(message.data, dpkt.ssl.TLSClientHello):
-                print '  ClientHello'
+                #print '  ClientHello'
                 plex.client_perspective = False
                 other_plex.client_perspective = True
                 self.to_server = plex  # read by server
                 self.client_hello = message
             elif isinstance(message.data, dpkt.ssl.TLSServerHello):
-                print '  ServerHello'
+                #print '  ServerHello'
                 plex.client_perspective = True
                 other_plex.client_perspective = False
                 self.to_server = other_plex

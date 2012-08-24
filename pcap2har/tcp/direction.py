@@ -18,6 +18,7 @@ class Direction(object):
     * data: string
     * byte_final_arrival(byte): dpkt timestamp when that byte and all data
         before it had arrived.
+    * clear_data(): get rid of all data.
 
     Members:
     * finished = bool. Indicates whether more packets should be expected.

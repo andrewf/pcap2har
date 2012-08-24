@@ -86,7 +86,21 @@ class Direction(object):
 
     @property
     def data(self):
+        if self._data is None:
+            return None
         return self._data.getvalue()
+
+    def clear_data(self):
+        '''
+        Clear out any data possible, to save memory.
+
+        In conformance with tcp.Direction interface. First call clear_data
+        on self.tcpdir, then get rid of data in 
+        '''
+        self.tcpdir.clear_data()
+        self._data = None
+        # wipe out tls_state
+
 
     def on_change_cipher_spec(self):
         '''

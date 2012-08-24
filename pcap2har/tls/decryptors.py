@@ -139,6 +139,7 @@ class Aes256Cbc(BlockDecryptor):
         #print 'creating Aes256Cbc'
         Decryptor.__init__(self, params, client_perspective)
         # TLS1.0 specific logic
+        # these exceptions tell tls.Flow to skip this flow in the future.
         if not params.master_secret:
             raise ssl.SSL3Exception('missing master_secret')
         if not params.client_random:
@@ -175,11 +176,11 @@ class Aes256Cbc(BlockDecryptor):
         return plaintext
 
 
-
 ALGORITHMS = {
     'NULL': NullDecryptor,
     'AES_256_CBC': Aes256Cbc,
 }
+
 
 def new(params, client_perspective):
     name = params.cipher_suite.encoding

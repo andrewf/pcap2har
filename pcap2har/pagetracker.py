@@ -138,4 +138,4 @@ class PageTracker(object):
         return result
 
     def json_repr(self):
-        return sorted(self.pages)
+        return sorted(self.pages, key=lambda p: p.pageref)

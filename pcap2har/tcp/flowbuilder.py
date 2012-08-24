@@ -1,3 +1,4 @@
+from .. import settings
 from .. import tls
 from ..tls import session
 import flow as tcp
@@ -67,7 +68,10 @@ class FlowBuilder(object):
         * packet: tcp.Packet
         '''
         newflow = tcp.Flow()
-        if socket[0][1] == 443 or socket[1][1] == 443:
+        srcport = socket[0][1]
+        dstport = socket[1][1]
+        # wrap flows on port 443 in a tls.Flow
+        if (srcport == 443 or dstport == 443) and settings.process_tls:
             newflow = tls.Flow(newflow, self.tls_session_manager)
         newflow.add(packet)
         if socket in self.flowdict:

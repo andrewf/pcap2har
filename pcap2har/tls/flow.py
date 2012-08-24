@@ -68,7 +68,7 @@ class Flow(object):
             except ssl.SSL3Exception, e:
                 self.blackhole = True
                 # CLEAR FWD AND REV
-                logging.error('Blackholing SSL/TLS flow due to error: %r' % e)
+                logging.warning('Blackholing SSL/TLS flow due to error: %r' % e)
 
     def add(self, pkt):
         self.tcpflow.add(pkt)  # also updates the tcpdirs owned by self.fwd/rev

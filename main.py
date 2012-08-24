@@ -38,6 +38,11 @@ parser.add_option('--pad_missing_tcp_data', action='store_true',
 parser.add_option('--strict-http-parsing', action='store_true',
                   dest='strict_http_parsing', default=False)
 parser.add_option('-l', '--log', dest='logfile', default='pcap2har.log')
+# for tls settings, use default from settings module
+parser.add_option('--tls', dest='process_tls', action='store_true',
+                  default=settings.process_tls)
+parser.add_option('--no-tls', dest='process_tls', action='store_false',
+                  default=settings.process_tls)
 parser.add_option('--nsskeylog', dest='keylog', default=None,
                   help = 'Log of SSL/TLS keys used in a browsing session. See '
                   'https://developer.mozilla.org/en-US/docs/NSS_Key_Log_Format '
@@ -50,6 +55,7 @@ settings.drop_bodies = options.drop_bodies
 settings.keep_unfulfilled_requests = options.keep_unfulfilled
 settings.pad_missing_tcp_data = options.pad_missing_tcp_data
 settings.strict_http_parse_body = options.strict_http_parsing
+settings.process_tls = options.process_tls
 
 # setup logs
 logging.basicConfig(filename=options.logfile, level=logging.INFO)
