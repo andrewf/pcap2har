@@ -4,6 +4,7 @@
 Classes relating to TLS connection states
 '''
 
+import logging
 
 import dpkt
 import dpkt.ssl

@@ -25,6 +25,9 @@ class Flow(object):
     Members:
     * fwd: ssl.Direction
     * rev: ssl.Direction
+    * blackhole: whether to ignore all new records. Turned on in case of TLS
+        error. Also implies fwd and rev have been cleared. Still pass packets to
+        tcp.flow, in case a new flow starts on this socket.
     * tcpflow: tcp.Flow
     * connstate: connectionstate.Period, connection state to
         which packets are currently being added (starts None, set by
@@ -47,6 +50,7 @@ class Flow(object):
         # by the Directions when they call next_connstate to get their
         # first connection states
         self.pending_params = connectionstate.Params(None, None) # fill in later
+        self.blackhole = False
         self.connstate = None
         self.pending_connstate = None
         self.old_states = []
@@ -56,10 +60,19 @@ class Flow(object):
         self.fwd.on_change_cipher_spec()
         self.rev.on_change_cipher_spec()
 
+    def update_records(self):
+        if not self.blackhole:
+            try:
+                self.fwd.update_records()
+                self.rev.update_records()
+            except ssl.SSL3Exception, e:
+                self.blackhole = True
+                # CLEAR FWD AND REV
+                logging.error('Blackholing SSL/TLS flow due to error: %r' % e)
+
     def add(self, pkt):
         self.tcpflow.add(pkt)  # also updates the tcpdirs owned by self.fwd/rev
-        self.fwd.update_records()
-        self.rev.update_records()
+        self.update_records()
 
     def next_connstate(self, asking_dir):
         '''
@@ -98,5 +111,4 @@ class Flow(object):
 
     def finish(self):
         self.tcpflow.finish()
-        self.fwd.update_records()
-        self.rev.update_records()
+        self.update_records()

@@ -15,6 +15,7 @@ import logging
 from cStringIO import StringIO
 import hashlib
 import hmac
+from dpkt import ssl
 
 from Crypto.Cipher import AES
 
@@ -139,11 +140,11 @@ class Aes256Cbc(BlockDecryptor):
         Decryptor.__init__(self, params, client_perspective)
         # TLS1.0 specific logic
         if not params.master_secret:
-            raise RuntimeError('missing master_secret')
+            raise ssl.SSL3Exception('missing master_secret')
         if not params.client_random:
-            raise RuntimeError('missing client random')
+            raise ssl.SSL3Exception('missing client random')
         if not params.server_random:
-            raise RuntimeError('missing server random')
+            raise ssl.SSL3Exception('missing server random')
         keys = KeysFromMasterSecret(params)
         if self.client_perspective:
             self.key = keys[3]
