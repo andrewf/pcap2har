@@ -20,6 +20,13 @@ class Flow(object):
     Represents TCP traffic across a given socket, ideally between a TCP
     handshake and clean connection termination.
 
+    This class is considered to define an abstract interface which is also
+    satisfied by ssl.Flow, and used by any higher-level protocols. The
+    important parts of this interface are these member variables:
+    * fwd: Direction
+    * rev: Direction
+    * handshake: [tcp.Packet]
+
     Members:
     * fwd, rev = tcp.Direction, both sides of the communication stream
     * socket = ((srcip, sport), (dstip, dport)). Used for checking the direction
@@ -125,7 +132,7 @@ class Flow(object):
             return False
         else:
             raise ValueError(
-                'TCPFlow.samedir found a packet from the wrong flow')
+                'tcp.Flow.samedir found a packet from the wrong flow')
 
     def writeout_data(self, basename):
         '''

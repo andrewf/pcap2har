@@ -1,3 +1,4 @@
+from .. import tls
 import flow as tcp
 import logging
 
@@ -34,9 +35,6 @@ class FlowBuilder(object):
         if srcport == 5228 or dstport == 5228:
             logging.warning('hpvroom packets are ignored')
             return
-        if srcport == 443 or dstport == 443:
-            logging.warning('https packets are ignored')
-            return
         # sort the packet into a tcp.Flow in flowdict. If NewFlowError is
         # raised, the existing flow doesn't want any more packets, so we
         # should start a new flow.
@@ -65,6 +63,8 @@ class FlowBuilder(object):
         * packet: tcp.Packet
         '''
         newflow = tcp.Flow()
+        if socket[0][1] == 443 or socket[1][1] == 443:
+            newflow = tls.Flow(newflow)
         newflow.add(packet)
         if socket in self.flowdict:
             self.flowdict[socket].append(newflow)
@@ -80,4 +80,4 @@ class FlowBuilder(object):
                 yield flow
 
     def finish(self):
-        map(tcp.Flow.finish, self.flows())
+        map(lambda f: f.finish(), self.flows())

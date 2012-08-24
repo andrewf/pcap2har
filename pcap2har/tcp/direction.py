@@ -12,6 +12,15 @@ class Direction(object):
     '''
     Represents data moving in one direction in a TCP flow.
 
+    This class is considered to define an abstract interface for a stream
+    of data, used by higher-level protocols. The important parts of this
+    interface are these member vars and methods:
+    * data: string
+    * byte_to_seq(byte): sequence number corresponding to that byte
+    * seq_final_arrival(seq): when that sequence number and all data before
+      it had arrived.
+    * ???
+
     Members:
     * finished = bool. Indicates whether more packets should be expected.
     * chunks = [tcp.Chunk] or None, sorted by seq_start. None iff data

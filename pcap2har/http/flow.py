@@ -93,7 +93,7 @@ def gather_messages(MessageClass, tcpdir):
     basic idea comes from pyper's function, HTTPFlow.analyze.gather_messages.
     Args:
     * MessageClass = class, Request or Response
-    * tcpdir = TCPDirection, from which will be extracted the data
+    * tcpdir = tcp.Direction, from which will be extracted the data
     Returns:
     [MessageClass]
 

@@ -15,6 +15,7 @@ from pcap2har import http
 from pcap2har import httpsession
 from pcap2har import har
 from pcap2har import tcp
+#from pcap2har import tls
 from pcap2har import settings
 from pcap2har.packetdispatcher import PacketDispatcher
 from pcap2har.pcaputil import print_rusage
