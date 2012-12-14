@@ -12,7 +12,7 @@ def header_json_repr(d):
         {
             'name': k,
             'value': v
-        } for k, v in d.iteritems()
+        } for k, v in sorted(d.iteritems())
     ]
 
 
@@ -20,7 +20,7 @@ def query_json_repr(d):
     # d = {string: [string]}
     # we need to print all values of the list
     output = []
-    for k, l in d.iteritems():
+    for k, l in sorted(d.iteritems()):
         for v in l:
             output.append({
                 'name': k,
