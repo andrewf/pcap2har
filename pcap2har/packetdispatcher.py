@@ -2,6 +2,7 @@ import dpkt
 import tcp
 import udp
 
+
 class PacketDispatcher:
     '''
     takes a series of dpkt.Packet's and calls callbacks based on their type
@@ -14,9 +15,11 @@ class PacketDispatcher:
     * flowbuilder = tcp.FlowBuilder
     * udp = udp.Processor
     '''
+
     def __init__(self):
         self.tcp = tcp.FlowBuilder()
         self.udp = udp.Processor()
+
     def add(self, ts, buf, eth):
         '''
         ts = dpkt timestamp
@@ -26,7 +29,7 @@ class PacketDispatcher:
         #decide based on pkt.data
         # if it's IP...
         if (isinstance(eth.data, dpkt.ip.IP) or
-                    isinstance(eth.data, dpkt.ip6.IP6)):
+            isinstance(eth.data, dpkt.ip6.IP6)):
             ip = eth.data
             # if it's TCP
             if isinstance(ip.data, dpkt.tcp.TCP):
@@ -35,6 +38,7 @@ class PacketDispatcher:
             # if it's UDP...
             elif isinstance(ip.data, dpkt.udp.UDP):
                 self.udp.add(ts, ip.data)
+
     def finish(self):
         #This is a hack, until tcp.Flow no longer has to be `finish()`ed
         self.tcp.finish()

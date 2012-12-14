@@ -1,17 +1,5 @@
-'''
-Objects for parsing TCP streams and packets.
-'''
-
 import dpkt
 
-# make tcp.Flow, tcp.Packet, etc. valid
-from packet import Packet
-from flow import Flow
-from chunk import Chunk
-from direction import Direction
-from flowbuilder import FlowBuilder
-
-# util functions
 
 def detect_handshake(packets):
     '''
@@ -29,7 +17,7 @@ def detect_handshake(packets):
     rev_seq = None
     if syn.tcp.flags & dpkt.tcp.TH_SYN and not syn.tcp.flags & dpkt.tcp.TH_ACK:
         # have syn
-        fwd_seq = syn.seq # start_seq is the seq field of the segment
+        fwd_seq = syn.seq  # start_seq is the seq field of the segment
         if (synack.flags & dpkt.tcp.TH_SYN and
             synack.flags & dpkt.tcp.TH_ACK and
             synack.ack == fwd_seq + 1):

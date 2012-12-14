@@ -1,10 +1,8 @@
-import dpkt
-from pcaputil import *
-from socket import inet_ntoa
+import logging
 
-import logging as log
-import os
-import shutil
+import dpkt
+
+from pcaputil import *
 import tcp
 from packetdispatcher import PacketDispatcher
 
@@ -28,24 +26,26 @@ def ParsePcap(dispatcher, filename=None, reader=None):
         try:
             pcap = ModifiedReader(f)
         except dpkt.dpkt.Error as e:
-            log.warning('failed to parse pcap file %s' % filename)
+            logging.warning('failed to parse pcap file %s' % filename)
             return
     elif reader:
         pcap = reader
     else:
         raise 'function ParsePcap needs either a filename or pcap reader'
-    #now we have the reader; read from it
-    packet_count = 1 # start from 1 like Wireshark
+    # now we have the reader; read from it
+    packet_count = 1  # start from 1 like Wireshark
     errors = [] # store errors for later inspection
     try:
         for packet in pcap:
-            ts = packet[0]  # timestamp
-            buf = packet[1] # frame data
-            hdr = packet[2] # libpcap header
+            ts = packet[0]   # timestamp
+            buf = packet[1]  # frame data
+            hdr = packet[2]  # libpcap header
             # discard incomplete packets
             if hdr.caplen != hdr.len:
                 # log packet number so user can diagnose issue in wireshark
-                log.warning('ParsePcap: discarding incomplete packet, # %d' % packet_count)
+                logging.warning(
+                    'ParsePcap: discarding incomplete packet, #%d' %
+                    packet_count)
                 continue
             # parse packet
             try:
@@ -60,12 +60,23 @@ def ParsePcap(dispatcher, filename=None, reader=None):
             # catch errors from this packet
             except dpkt.Error as e:
                 errors.append((packet, e, packet_count))
-                log.warning('Error parsing packet: %s. On packet #%s' %
-                            (e, packet_count))
+                logging.warning(
+                    'Error parsing packet: %s. On packet #%d' %
+                    (e, packet_count))
             packet_count += 1
     except dpkt.dpkt.NeedData as error:
-        log.warning(error)
-        log.warning('A packet in the pcap file was too short, '
-                    'debug_pkt_count=%d' % debug_pkt_count)
+        logging.warning(error)
+        logging.warning(
+            'A packet in the pcap file was too short, packet_count=%d' %
+            packet_count)
         errors.append((None, error))
-    
+
+
+def EasyParsePcap(filename=None, reader=None):
+    '''
+    Like ParsePcap, but makes and returns a PacketDispatcher for you.
+    '''
+    dispatcher = PacketDispatcher()
+    ParsePcap(dispatcher, filename=filename, reader=reader)
+    dispatcher.finish()
+    return dispatcher

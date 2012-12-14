@@ -3,11 +3,14 @@ Defines functions for comparing and processing TCP sequence numbers, taking
 into account their limited number space.
 '''
 
+
 def twos_comp(x):
     return (~x)+1
 
+
 numberspace = 2**32 # seq numbers are up to but not including this
 halfspace = numberspace / 2
+
 
 def wrap(x):
     '''
@@ -23,6 +26,7 @@ def wrap(x):
         x = 0 - (x + halfspace)
     # x is now normalized
     return x
+
 
 def subtract(a, b):
     '''Calculate the difference between a and b, two python longs,
@@ -42,7 +46,9 @@ def lte(a, b):
 def gte(a, b):
     return subtract(a, b) >= 0
 
+
 import unittest
+
 
 class TestTcpSeqSubtraction(unittest.TestCase):
     def testNormalSubtraction(self):
@@ -56,20 +62,18 @@ class TestTcpSeqSubtraction(unittest.TestCase):
         self.assertEqual(subtract(0x10000000, 0xd0000000), 0x40000000)
         # actual: a > b. want: a < b
         self.assertEqual(subtract(0xd0000000, 0x10000000), -0x40000000)
-        #self.assertEqual(subtract(
-        #self.assertEqual(subtract(
-        #self.assertEqual(subtract(
+
 
 class TestLessThan(unittest.TestCase):
     def testLessThan(self):
         self.assertTrue( not lt(100, 10))
         self.assertTrue( lt(0x7fffffff, 0xf0000000))
-    
+
+
 def runtests():
     suite = unittest.TestSuite()
-    suite.addTest(TestTcpSeqSubtraction("testNormalSubtraction"))
-    suite.addTest(TestTcpSeqSubtraction("testWrappedSubtraction"))
-    suite.addTest(TestLessThan("testLessThan"))
-    #suite.addTest(TestLessThan(""))
+    suite.addTest(TestTcpSeqSubtraction('testNormalSubtraction'))
+    suite.addTest(TestTcpSeqSubtraction('testWrappedSubtraction'))
+    suite.addTest(TestLessThan('testLessThan'))
     runner = unittest.TextTestRunner()
     runner.run(suite)

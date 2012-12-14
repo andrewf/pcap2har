@@ -1,8 +1,9 @@
-import dns
+import logging
 import dpkt
-import logging as log
+import dns
 
-class Processor:
+
+class Processor(object):
     '''
     Processes and interprets UDP packets.
 
@@ -15,8 +16,10 @@ class Processor:
     architectural elegance. But I think it's begging for trouble to combine it
     with DNS handling.
     '''
+
     def __init__(self):
         self.dns = dns.Processor()
+
     def add(self, ts, pkt):
         '''
         pkt = dpkt.udp.UDP
@@ -27,6 +30,6 @@ class Processor:
                 dnspkt = dpkt.dns.DNS(pkt.data)
                 self.dns.add(dns.Packet(ts, dnspkt))
             except dpkt.Error:
-                log.warning('UDP packet on port 53 was not DNS')
+                logging.warning('UDP packet on port 53 was not DNS')
         else:
-            log.warning('unkown UDP ports: %d->%d' % (pkt.sport, pkt.dport))
+            logging.warning('unkown UDP ports: %d->%d' % (pkt.sport, pkt.dport))

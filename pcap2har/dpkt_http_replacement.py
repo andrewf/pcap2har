@@ -7,14 +7,16 @@ fix the bug where a body is parsed for a request that shouldn't have a body."""
 
 import cStringIO
 import dpkt
+import logging
+import settings
 
 def parse_headers(f):
     """Return dict of HTTP headers parsed from a file object."""
     d = {}
     while 1:
         line = f.readline()
-        if not line:
-            raise dpkt.NeedData('premature end of headers')
+        # regular dpkt checks for premature end of headers
+        # but that's too picky
         line = line.strip()
         if not line:
             break
@@ -29,7 +31,22 @@ def parse_headers(f):
             d[k] = v
     return d
 
-def parse_body(f, headers):
+
+def parse_length(s, base=10):
+    """Take a string and convert to int (not long), returning 0 if invalid"""
+    try:
+        n = int(s, base)
+        # int() can actually return long, which can't be used in file.read()
+        if isinstance(n, int):
+            return n
+    except ValueError:
+        pass
+    # if s was invalid or too big (that is, int returned long)...
+    logging.warn('Invalid HTTP content/chunk length "%s", assuming 0' % s)
+    return 0
+
+
+def parse_body(f, version, headers):
     """Return HTTP body parsed from a file object, given HTTP header dict."""
     if headers.get('transfer-encoding', '').lower() == 'chunked':
         l = []
@@ -39,8 +56,8 @@ def parse_body(f, headers):
                 sz = f.readline().split(None, 1)[0]
             except IndexError:
                 raise dpkt.UnpackError('missing chunk size')
-            n = int(sz, 16)
-            if n == 0:
+            n = parse_length(sz, 16)
+            if n == 0:  # may happen if sz is invalid
                 found_end = True
             buf = f.read(n)
             if f.readline().strip():
@@ -49,18 +66,55 @@ def parse_body(f, headers):
                 l.append(buf)
             else:
                 break
-        if not found_end:
+        if settings.strict_http_parse_body and not found_end:
             raise dpkt.NeedData('premature end of chunked body')
         body = ''.join(l)
     elif 'content-length' in headers:
-        n = int(headers['content-length'])
+        # Ethan K B: Have observed malformed 0,0 content lengths
+        n = parse_length(headers['content-length'])
         body = f.read(n)
         if len(body) != n:
-            raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
+            logging.warn('HTTP content-length mismatch: expected %d, got %d', n,
+                         len(body))
+            if settings.strict_http_parse_body:
+                raise dpkt.NeedData('short body (missing %d bytes)' % (n - len(body)))
     else:
         # XXX - need to handle HTTP/0.9
-        body = ''
+        # BTW, this function is not called if status code is 204 or 304
+        if version == '1.0':
+            # we can assume that there are no further
+            # responses on this stream, since 1.0 doesn't
+            # support keepalive
+            body = f.read()
+        elif (version == '1.1' and
+              headers.get('connection', None) == 'close'):
+            # sender has said they won't send anything else.
+            body = f.read()
+        # there's also the case where other end sends connection: close,
+        # but we don't have the architecture to handle that.
+        else:
+            # we don't really know what to do
+            #print 'returning body as empty string:', version, headers
+            body = ''
     return body
+
+def parse_message(message, f):
+    """
+    Unpack headers and optionally body from the passed file-like object.
+
+    Args:
+      message: Request or Response to which to add data.
+      f: file-like object, probably StringIO.
+    """
+    # Parse headers
+    message.headers = parse_headers(f)
+    # Parse body, unless we know there isn't one
+    if not (getattr(message, 'status', None) in ('204', '304')):
+        message.body = parse_body(f, message.version, message.headers)
+    else:
+        message.body = ''
+    # Save the rest
+    message.data = f.read()
 
 class Message(dpkt.Packet):
     """Hypertext Transfer Protocol headers + body."""
@@ -82,12 +136,7 @@ class Message(dpkt.Packet):
 
     def unpack(self, buf):
         f = cStringIO.StringIO(buf)
-        # Parse headers
-        self.headers = parse_headers(f)
-        # Parse body
-        self.body = parse_body(f, self.headers)
-        # Save the rest
-        self.data = f.read()
+        parse_message(self, f)
 
     def pack_hdr(self):
         return ''.join([ '%s: %s\r\n' % t for t in self.headers.iteritems() ])
@@ -130,7 +179,7 @@ class Request(Message):
         self.method = l[0]
         self.uri = l[1]
         self.version = l[2][len(self.__proto)+1:]
-        Message.unpack(self, f.read())
+        parse_message(self, f)
 
     def __str__(self):
         return '%s %s %s/%s\r\n' % (self.method, self.uri, self.__proto,
@@ -149,12 +198,12 @@ class Response(Message):
         f = cStringIO.StringIO(buf)
         line = f.readline()
         l = line.strip().split(None, 2)
-        if len(l) < 2 or not l[0].startswith(self.__proto) or not l[1].isdigit():
+        if len(l) < 3 or not l[0].startswith(self.__proto) or not l[1].isdigit():
             raise dpkt.UnpackError('invalid response: %r' % line)
         self.version = l[0][len(self.__proto)+1:]
         self.status = l[1]
         self.reason = l[2]
-        Message.unpack(self, f.read())
+        parse_message(self, f)
 
     def __str__(self):
         return '%s/%s %s %s\r\n' % (self.__proto, self.version, self.status,

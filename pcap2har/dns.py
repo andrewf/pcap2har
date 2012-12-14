@@ -1,6 +1,7 @@
-import logging as log
+import logging
 
-class Packet:
+
+class Packet(object):
     '''
     A DNS packet, wrapped for convenience and with the pcap timestamp
 
@@ -12,6 +13,7 @@ class Packet:
     names = list of names asked about
     dns = dpkt.dns.DNS
     '''
+
     def __init__(self, ts, pkt):
         '''
         ts = pcap timestamp
@@ -22,11 +24,13 @@ class Packet:
         self.txid = pkt.id
         self.names = [q.name for q in pkt.qd]
         if len(self.names) > 1:
-            log.warning('DNS packet with multiple questions')
+            logging.warning('DNS packet with multiple questions')
+
     def name(self):
         return self.names[0]
 
-class Query:
+
+class Query(object):
     '''
     A DNS question/answer conversation with a single ID
 
@@ -37,6 +41,7 @@ class Query:
     name = domain name being discussed
     resolved = Bool, whether the question has been answered
     '''
+
     def __init__(self, initial_packet):
         '''
         initial_packet = dns.Packet, simply the first one on the wire with
@@ -47,19 +52,22 @@ class Query:
         self.last_ts = initial_packet.ts
         self.resolved = False
         self.name = initial_packet.name()
+
     def add(self, pkt):
         '''
         pkt = dns.Packet
         '''
-        assert(pkt.txid == self.txid)
+        assert pkt.txid == self.txid
         self.last_ts = max(pkt.ts, self.last_ts)
         # see if this resolves the query
         if len(pkt.dns.an) > 0:
             self.resolved = True
+
     def duration(self):
         return self.last_ts - self.started_time
 
-class Processor:
+
+class Processor(object):
     '''
     Processes and interprets DNS packets.
 
@@ -69,9 +77,11 @@ class Processor:
     queries = {txid: Query}
     by_hostname = {string: [Query]}
     '''
+
     def __init__(self):
         self.queries = {}
         self.by_hostname = {}
+
     def add(self, pkt):
         '''
         adds the packet to a Query object by id, and makes sure that Queryies
@@ -86,12 +96,14 @@ class Processor:
             new_query = Query(pkt)
             self.queries[pkt.txid] = new_query
             self.add_by_name(new_query)
+
     def add_by_name(self, query):
         name = query.name
         if name in self.by_hostname:
             self.by_hostname[name].append(query)
         else:
             self.by_hostname[name] = [query]
+
     def get_resolution_time(self, hostname):
         '''
         Returns the last time it took to resolve the hostname.
@@ -104,6 +116,7 @@ class Processor:
             return self.by_hostname[hostname][-1].duration()
         except KeyError:
             return None
+
     def num_queries(self, hostname):
         '''
         Returns the number of DNS requests for that name
