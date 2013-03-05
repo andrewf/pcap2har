@@ -1,3 +1,5 @@
+import logging
+
 class Message(object):
     '''
     Contains a dpkt.http.Request/Response, as well as other data required to
@@ -32,6 +34,8 @@ class Message(object):
         # calculate arrival_times
         self.ts_start = tcpdir.seq_final_arrival(self.seq_start)
         self.ts_end = tcpdir.seq_final_arrival(self.seq_end - 1)
+        if self.ts_start is None or self.ts_end is None:
+            logging.warn('Got an HTTP message with unknown start or end time.')
         # get raw body
         self.raw_body = self.msg.body
         self.__pointer = pointer

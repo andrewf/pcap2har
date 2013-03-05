@@ -49,12 +49,14 @@ class Page(object):
         self.referrers.add(entry.request.url)
 
     def json_repr(self):
-        return {
+        d = {
             'id': self.pageref,
-            'startedDateTime': self.startedDateTime.isoformat() + 'Z',
             'title': self.title,
             'pageTimings': default_page_timings
         }
+        if self.startedDateTime:
+            d['startedDateTime'] = self.startedDateTime.isoformat() + 'Z'
+        return d
 
 
 default_page_timings = {

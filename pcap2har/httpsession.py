@@ -7,7 +7,7 @@ from datetime import datetime
 import dpkt
 import logging
 
-from pcaputil import ms_from_timedelta, ms_from_dpkt_time
+from pcaputil import ms_from_dpkt_time, ms_from_dpkt_time_diff
 from pagetracker import PageTracker
 import http
 import settings
@@ -35,24 +35,25 @@ class Entry(object):
         self.request = request
         self.response = response
         self.pageref = None
-        self.ts_start = int(request.ts_connect*1000)
-        self.startedDateTime = datetime.utcfromtimestamp(request.ts_connect)
+        self.ts_start = ms_from_dpkt_time(request.ts_connect)
+        if request.ts_connect is None:
+            self.startedDateTime = None
+        else:
+            self.startedDateTime = datetime.utcfromtimestamp(request.ts_connect)
         # calculate other timings
         self.time_blocked = -1
         self.time_dnsing = -1
         self.time_connecting = (
-            ms_from_dpkt_time(request.ts_start - request.ts_connect))
+            ms_from_dpkt_time_diff(request.ts_start, request.ts_connect))
         self.time_sending = (
-            ms_from_dpkt_time(request.ts_end - request.ts_start))
+            ms_from_dpkt_time_diff(request.ts_end, request.ts_start))
         if response is not None:
             self.time_waiting = (
-                ms_from_dpkt_time(response.ts_start - request.ts_end))
+                ms_from_dpkt_time_diff(response.ts_start, request.ts_end))
             self.time_receiving = (
-                ms_from_dpkt_time(response.ts_end - response.ts_start))
+                ms_from_dpkt_time_diff(response.ts_end, response.ts_start))
             endedDateTime = datetime.utcfromtimestamp(response.ts_end)
-            self.total_time = ms_from_timedelta(
-                endedDateTime - self.startedDateTime
-            )
+            self.total_time = ms_from_dpkt_time_diff(response.ts_end, request.ts_connect)
         else:
             # this can happen if the request never gets a response
             self.time_waiting = -1
@@ -64,8 +65,6 @@ class Entry(object):
         return a JSON serializable python object representation of self.
         '''
         d = {
-            # Z means time is in UTC
-            'startedDateTime': self.startedDateTime.isoformat() + 'Z',
             'time': self.total_time,
             'request': self.request,
             'response': self.response,
@@ -79,6 +78,9 @@ class Entry(object):
             },
             'cache': {},
         }
+        if self.startedDateTime:
+            # Z means time is in UTC
+            d['startedDateTime'] = self.startedDateTime.isoformat() + 'Z'
         if self.pageref:
             d['pageref'] = self.pageref
         return d
