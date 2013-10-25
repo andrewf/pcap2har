@@ -63,7 +63,7 @@ def HTTPResponseJsonRepr(self):
     return {
         'status': int(self.msg.status),
         'statusText': self.msg.reason,
-        'httpVersion': self.msg.version,
+        'httpVersion': 'HTTP/' + self.msg.version,
         'cookies': [],
         'headersSize': -1,
         'bodySize': self.raw_body_length,
